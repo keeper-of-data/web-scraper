@@ -126,6 +126,6 @@ class Hubble(Scraper):
         file_name = url.split('/')[-1]
         save_path = self._base_dir + "/" + image['id'] + "/"
         self.download(url, save_path + file_name, self._url_header)
-        title_file = save_path + self.sanitize(image['title']) + ".txt"
+        title_file = save_path + image['id'] + " - " + self.sanitize(image['title']) + ".txt"
         open(title_file, 'a').close()
 
