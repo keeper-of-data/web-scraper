@@ -28,7 +28,7 @@ class Process(Scraper):
         # Get start val from progress file if exist
         if os.path.isfile(self._progress_file):
             with open(self._progress_file, 'r') as outfile:
-                start_val = int(outfile.read())+1
+                start_val = int(outfile.read())
         print(self.log("##\tStarting at: " + str(start_val)))
 
         # Find out where to stop
