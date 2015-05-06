@@ -8,6 +8,7 @@ from utils.process import Process
 from modules.tuebl import Tuebl as tuebl
 from modules.itebooks import ItEbooks as itebooks
 from modules.wallhaven import Wallhaven as wallhaven
+from modules.hubble import Hubble as hubble
 from modules.iconfinder import IconFinder as iconfinder
 from modules.findicons import FindIcons as findicons
 from modules.xkcd import Xkcd as xkcd

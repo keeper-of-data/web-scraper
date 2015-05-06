@@ -67,7 +67,8 @@ class Scraper:
             self.log("Error [get_html]: " + str(e.code) + " " + url)
         else:
             try:
-                html = response.read().decode('utf-8')
+                # replace char it cannot read
+                html = response.read().decode('utf-8', 'replace')
             except UnicodeDecodeError as e:
                 self.log("Error [get_html][UnicodeDecodeError]:" + str(e) + " " + url )
         return html
