@@ -19,6 +19,7 @@ class Scraper:
         except Exception as e:
             pass
         try:
+            # Only download if we do not have it.
             if not os.path.isfile(file_path):
                 with urllib.request.urlopen(
                     urllib.request.Request(url, headers=header)) as response, \
