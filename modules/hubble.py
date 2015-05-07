@@ -55,7 +55,7 @@ class Hubble(Scraper):
                 if img_list is None:  # Old Site
                     dl_file_list = self._old_site(img_soup, url_base)
                 else:  # New Site
-                    dl_file_listself._new_site(img_soup, url_base)
+                    dl_file_list = self._new_site(img_soup, url_base)
 
             # Download list of images
             for image in dl_file_list:
