@@ -25,8 +25,6 @@ class Hubble(Scraper):
         :param id_: page number, not used here since all images are listed on a single page
         :return:
         """
-        prop = {}
-        prop['id'] = str(id_)
         url_base = "http://hubblesite.org"
         url = url_base + "/gallery/album/entire/npp/all/"
         # get the html from the url
@@ -35,7 +33,6 @@ class Hubble(Scraper):
             return False
         soup = BeautifulSoup(html)
 
-        # Find all sidebar data
         image_block = soup.find("div", {"id": "ListBlock"})
         image_list = image_block.find_all("a", {"class": "icon"})
 
@@ -45,22 +42,25 @@ class Hubble(Scraper):
             if not img_html:
                 continue
             img_soup = BeautifulSoup(img_html)
-            # img_list = img_soup.find("ul", {"class": "inline-links screen"}).find_all("li")
 
-            ##  TODO:
-            ##    Split here for the 2 different pages it may bring you to
-            img_list = img_soup.find("div", {"id": "download-links-holder"})  # New site
-            if img_list is None:
-                # Old Site
-                self._old_site(img_soup, url_base, image)
-            else:
-                # New Site
-                self._new_site(img_soup, url_base, image)
+            # Check to see if we already have the data
+            path_base = self._base_dir + "/" + image['id'] + "/"
+            file_name = image['id'] + " - " + self.sanitize(image['title']) + ".txt"
+            title_file = path_base + file_name
+            # The `" "*n` is to blank the rest of the line
+            print(self.log("Checking: " + image['id'] + " "*20), end='\r')
+            if not os.path.isfile(title_file):
+                # Check to see if we are on the new or the old site
+                img_list = img_soup.find("div", {"id": "download-links-holder"})  # New site
+                if img_list is None:  # Old Site
+                    self._old_site(img_soup, url_base, path_base, title_file)
+                else:  # New Site
+                    self._new_site(img_soup, url_base, path_base, title_file)
 
         # Everything was successful
         return True
 
-    def _new_site(self, soup, url_base, image):
+    def _new_site(self, soup, url_base, path_base, title_file):
         img_list = soup.find("div", {"id": "download-links-holder"})
 
         # Check to if high res pics are linked
@@ -75,7 +75,7 @@ class Hubble(Scraper):
             for hires_link in hires_links:
                 hires_dl_url = hires_link.a['href']
                 # Download here
-                self._download(hires_dl_url, image)
+                self._download(hires_dl_url, path_base, title_file)
 
         self.log("[NEW] Get other")
         # Get all other images
@@ -88,9 +88,9 @@ class Hubble(Scraper):
                 link_soup = BeautifulSoup(link_html)
                 img_dl_url = link_soup.find("div", {"class": "subpage-body"}).img['src']
             # Download here
-            self._download(img_dl_url, image)
+            self._download(img_dl_url, path_base, title_file)
 
-    def _old_site(self, soup, url_base, image):
+    def _old_site(self, soup, url_base, path_base, title_file):
         img_list = soup.find("div", {"class": "image-formats"})  # Old site
 
         # Check to if high res pics are linked
@@ -105,11 +105,11 @@ class Hubble(Scraper):
             for hires_link in hires_links:
                 hires_dl_url = hires_link.a['href']
                 # Download here
-                self._download(hires_dl_url, image)
+                self._download(hires_dl_url, path_base, title_file)
 
         self.log("[OLD] Get other")
-        # Get all other images 
-        img_links = img_list.find_all("a", {"class": "button"})     
+        # Get all other images
+        img_links = img_list.find_all("a", {"class": "button"})
         for link in img_links:
             link_url = link['href']
             img_dl_url = link_url
@@ -118,14 +118,11 @@ class Hubble(Scraper):
                 link_soup = BeautifulSoup(link_html)
                 img_dl_url = link_soup.find("div", {"class": "image-view"}).img['src']
             # Download here
-            self._download(img_dl_url, image)
+            self._download(img_dl_url, path_base, title_file)
 
-    def _download(self, url, image):
+    def _download(self, url, path_base, title_file):
         # The `" "*n` is to blank the rest of the line
         print(self.log("Downloading: " + url + " "*10), end='\r')
         file_name = url.split('/')[-1]
-        save_path = self._base_dir + "/" + image['id'] + "/"
-        self.download(url, save_path + file_name, self._url_header)
-        title_file = save_path + image['id'] + " - " + self.sanitize(image['title']) + ".txt"
+        self.download(url, path_base + file_name, self._url_header)
         open(title_file, 'a').close()
-
