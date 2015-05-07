@@ -57,12 +57,12 @@ class Hubble(Scraper):
                 else:  # New Site
                     dl_file_list = self._new_site(img_soup, url_base)
 
-            # Download list of images
-            for image in dl_file_list:
-                self._download(image, path_base, title_file)
+                # Download list of images
+                for image in dl_file_list:
+                    self._download(image, path_base, title_file)
 
-            # Create a file with the image title as its filename
-            open(title_file, 'a').close()
+                # Create a file with the image title as its filename
+                open(title_file, 'a').close()
 
         # Everything was successful
         return True
