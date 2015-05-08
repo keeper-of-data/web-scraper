@@ -37,19 +37,19 @@ class Hubble(Scraper):
         image_list = image_block.find_all("a", {"class": "icon"})
 
         for image in image_list:
-            img_url = url_base + image['href']
-            img_html = self.get_html(img_url, self._url_header)
-            if not img_html:
-                continue
-            img_soup = BeautifulSoup(img_html)
-
-            # Check to see if we already have the data
             path_base = self._base_dir + "/" + image['id'] + "/"
             file_name = image['id'] + " - " + self.sanitize(image['title']) + ".txt"
             title_file = path_base + file_name
             # The `" "*n` is to blank the rest of the line
             print(self.log("Checking: " + image['id'] + " "*20), end='\r')
+
+            # Check to see if we already have the data
             if not os.path.isfile(title_file):
+                img_url = url_base + image['href']
+                img_html = self.get_html(img_url, self._url_header)
+                if not img_html:
+                    continue
+                img_soup = BeautifulSoup(img_html)
                 # Check to see if we are on the new or the old site
                 img_list = img_soup.find("div", {"id": "download-links-holder"})  # New site
                 if img_list is None:  # Old Site
