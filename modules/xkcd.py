@@ -1,6 +1,5 @@
 from bs4 import BeautifulSoup
 from utils.scraper import Scraper
-import re
 
 
 class Xkcd(Scraper):
@@ -41,11 +40,21 @@ class Xkcd(Scraper):
             return False
         soup = BeautifulSoup(html)
 
+        prop['title'] = soup.find("div", {"id": "ctitle"}).get_text()
+
         comic = soup.find("div", {"id": "comic"})
 
-        prop['image'] = "http:" + comic.img['src']
-        prop['title'] = comic.img['alt']
-        prop['hover_text'] = comic.img['title']
+        prop['image'] = comic.img['src']
+
+        if prop['image'].startswith('//'):
+            prop['image'] = 'http:' + prop['image']
+        else:
+            prop['image'] = 'http://xkcd.com' + prop['image']
+
+        try:
+            prop['hover_text'] = comic.img['title']
+        except Exception as e:
+            prop['hover_text'] = ''
 
         #####
         # Download images
