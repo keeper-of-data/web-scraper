@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
 from utils.scraper import Scraper
-import os
+import os, sys
 import math
 import re
 import json
@@ -91,7 +91,21 @@ class HowStuffWorks(Scraper):
         ##TESTING
 
         # See what type of post it is
-        # url = "http://money.howstuffworks.com/10-jobs-that-will-take-you-on-wild-adventures.htm"
+        url = "http://money.howstuffworks.com/10-jobs-that-will-take-you-on-wild-adventures.htm"
+        whole_article = self.parse_article(url)
+
+        # Download/save images
+        whole_article = self.save_images(whole_article)
+
+        # Parse page content for links to make local
+        #   - External links will be saved in pdf form
+        #   - How Stuff Works links will be changed into a local path to the article
+
+        # Save json data in case we need to rebuild the article
+        self.save_props(whole_article)
+
+
+
         url = "http://science.howstuffworks.com/nature/natural-disasters/sharknado.htm"
         whole_article = self.parse_article(url)
 
@@ -114,10 +128,9 @@ class HowStuffWorks(Scraper):
         """
         for idx, page in enumerate(article['content']):
             if 'image_orig' in page:
-                print(page['image_orig'])
-                new_image = article['save_path'] + '/media/' + page['image_orig'].
-        # if self.download(img_src, prop['save_path'], self._url_header):
-        #     self.save_props(prop)
+                rel_image_path = "/assets/" + page['image_orig'].split('/')[-1]
+                article['content'][idx]['image_rel'] = rel_image_path
+                self.download(page['image_orig'], article['save_path'] + rel_image_path, self._url_header)
         return article
 
     def get_save_path(self, url, crumbs=None):
@@ -171,7 +184,7 @@ class HowStuffWorks(Scraper):
         for crumb in page_soup.find("div", {"class": "breadcrumb"}).find_all("a"):
             crumbs.append(crumb.get_text().strip())
 
-        return crumbs
+        return crumbs        
 
     def parse_article(self, url):
         """
@@ -208,7 +221,8 @@ class HowStuffWorks(Scraper):
         article['content'] = []  # List of content on each page
         # Parse each page in the article
         for idx, url in enumerate(links):
-            print(idx, len(links))
+
+            self.cprint("Processing page: " + str(idx) + " - " + article['title'])
             if idx is not 0:  # We do not need the first page because we got that soup above
                 page_soup = self.get_soup(url)
                 header_soup = page_soup.find("div", {"id": "content-header"})
@@ -217,7 +231,7 @@ class HowStuffWorks(Scraper):
             page_content = {}
             # If we are on the last page, parse a bit different
             if idx + 1 == len(links):
-                print("last page")
+                # print("last page")
                 page_content['title'] = "Last page"
             # If we are not on the last page
             else:

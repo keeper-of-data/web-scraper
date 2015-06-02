@@ -11,6 +11,8 @@ class Scraper:
         self._errors = {}
         # Set default log path
         self.log_file = log_file
+        # Store string of last line printed
+        self.prev_cstr = ''
 
     def download(self, url, file_path, header={}):
         self.log("Starting download: " + url)
@@ -69,6 +71,18 @@ class Scraper:
             except UnicodeDecodeError as e:
                 self.log("Error [get_html][UnicodeDecodeError]:" + str(e) + " " + url )
         return html
+
+    def cprint(self, cstr, log=False):
+        """
+        Clear then print on same line
+        :param cstr: string to print on current line
+        """
+        # Blank out whole line
+        print(" "*len(self.prev_cstr), end='\r')
+        self.prev_cstr = cstr
+        print(cstr, end='\r')
+        if log:
+            self.log(cstr)
 
     def rreplace(self, s, old, new, occurrence):
         """
