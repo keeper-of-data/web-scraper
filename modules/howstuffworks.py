@@ -1,15 +1,20 @@
 from bs4 import BeautifulSoup
 from utils.scraper import Scraper
+import os
 import math
 import re
 import json
-import unicodedata
+
 
 class HowStuffWorks(Scraper):
+
     def __init__(self, base_dir, url_header, log_file):
         super().__init__(log_file)
         self._base_dir = base_dir
         # Use mobile header, the mobile site it much simpler to parse
+        #   Reasons:
+        #     - Both the Top10 and normal articles have the same html structure
+        #     - The Top10 page on the desktop version has broken html and does not parse correctly
         self._url_header = {'User-Agent': 'Mozilla/5.0 (Linux; Android 4.4.4; en-us; Nexus 4 Build/JOP40D) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2307.2 Mobile Safari/537.36'}
 
     def get_latest(self):
@@ -29,6 +34,8 @@ class HowStuffWorks(Scraper):
         """
         prop = {}
         prop['id'] = str(id_)
+
+        # Move static assets
 
         # Get number of pages to loop through
         url = "http://www.howstuffworks.com/big.htm?page=1"
@@ -85,12 +92,56 @@ class HowStuffWorks(Scraper):
 
         # See what type of post it is
         # url = "http://money.howstuffworks.com/10-jobs-that-will-take-you-on-wild-adventures.htm"
-        # url = "http://science.howstuffworks.com/nature/natural-disasters/sharknado.htm"
         url = "http://science.howstuffworks.com/nature/natural-disasters/sharknado.htm"
-        test_data = self.parse_article(url)
+        whole_article = self.parse_article(url)
 
+        # Download/save images
+        whole_article = self.save_images(whole_article)
+
+        # Parse page content for links to make local
+        #   - External links will be saved in pdf form
+        #   - How Stuff Works links will be changed into a local path to the article
+
+        # Save json data in case we need to rebuild the article
+        self.save_props(whole_article)
         # Everything was successful
         return True
+
+    def save_images(self, article):
+        """
+        :param article: dict of all article data
+        :return: update article dict
+        """
+        for idx, page in enumerate(article['content']):
+            if 'image_orig' in page:
+                print(page['image_orig'])
+                new_image = article['save_path'] + '/media/' + page['image_orig'].
+        # if self.download(img_src, prop['save_path'], self._url_header):
+        #     self.save_props(prop)
+        return article
+
+    def get_save_path(self, url, crumbs=None):
+        """
+        Pass in the url of the article and crumbs list if you have them
+        :param url: url of the article
+        :param curmbs: list of bread crumbs, if not passed, a request will be sent to parse them
+        :return: save path as a string
+        """
+        if crumbs is not None:
+            crumbs = self.get_crumbs(url)
+        save_path = os.path.join(self._base_dir, 'articles')
+
+        # Add crumbs to path
+        for crumb in crumbs:
+            crumb = self.sanitize(crumb.replace(' ', '_'))
+            save_path = os.path.join(save_path, crumb)
+
+        # Add article title to path
+        title = url.split('/')[-1].split('.')[0]
+        save_path = os.path.join(save_path, title)
+        save_path += '/'
+        save_path = os.path.normcase(save_path)
+        return save_path
 
     def get_soup(self, url):
         """
@@ -101,6 +152,27 @@ class HowStuffWorks(Scraper):
         soup = BeautifulSoup(html)
         return soup
 
+    def get_crumbs(self, url=None, soup=None):
+        """
+        Use soup if you have it, that way les requests are made to the site.
+        :param url: url of article
+        :param soup: soup of the page
+        :return: list of crumbs
+        """
+        # Only request site if needed
+        if soup is not None:
+            page_soup = soup
+        elif url is not None:
+            page_soup = self.get_soup(url)
+        else:
+            return []
+
+        crumbs = []
+        for crumb in page_soup.find("div", {"class": "breadcrumb"}).find_all("a"):
+            crumbs.append(crumb.get_text().strip())
+
+        return crumbs
+
     def parse_article(self, url):
         """
         Using BeautifulSoup, parse the article for its data
@@ -110,7 +182,7 @@ class HowStuffWorks(Scraper):
         page_soup = self.get_soup(url)
 
         # Get links for each page in the article
-        links = []  
+        links = []
         page_links = page_soup.find("select", {"id": "pageSelector"}).find_all("option")
         for page_link in page_links:
             page_number = int(page_link.get_text().split(' ')[0])-1
@@ -118,17 +190,20 @@ class HowStuffWorks(Scraper):
             links.insert(page_number, page_url)
 
         article = {}
+
         # Get bread crumbs
-        article['bread_crumbs'] = []
-        for crumb in page_soup.find("div", {"class": "breadcrumb"}).find_all("a"):
-            article['bread_crumbs'].append(crumb.get_text().strip())
-        
+        article['bread_crumbs'] = self.get_crumbs(soup=page_soup)
+
+        # Get save path
+        article['save_path'] = self.get_save_path(url, article['bread_crumbs'])
+
         # Get title & author
         header_soup = page_soup.find("div", {"id": "content-header"})
         article['title'] = header_soup.find("h1").get_text().strip()
+        # I need to have a ['id']
+        article['id'] = article['title']
         author = header_soup.find("span", {"class": "content-author"}).a.get_text()
         article['author'] = " ".join(author.split())
-
 
         article['content'] = []  # List of content on each page
         # Parse each page in the article
@@ -158,7 +233,4 @@ class HowStuffWorks(Scraper):
                 page_content['page_content'] = content.strip()
             article['content'].insert(idx, page_content)
 
-        with open("article.json", 'w') as f:
-            json.dump(article, f, sort_keys=True, indent=4)
-        
         return article

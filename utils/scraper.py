@@ -14,10 +14,7 @@ class Scraper:
 
     def download(self, url, file_path, header={}):
         self.log("Starting download: " + url)
-        try: # Need this in case 2 threads are making the path at the same time
-            os.makedirs(os.path.dirname(file_path))
-        except Exception as e:
-            pass
+        self.create_dir(file_path)
         try:
             # Only download if we do not have it.
             if not os.path.isfile(file_path):
@@ -89,7 +86,7 @@ class Scraper:
             ['\\', '-'], [':', '-'], ['/', '-'],
             ['?', ''], ['<', ''], ['>', ''],
             ['`', '`'], ['|', '-'], ['*', '`'],
-            ['"', '\''], ['.', ''],
+            ['"', '\''], ['.', ''], ['&', 'and']
         ]
         for ch in replace_chars:
             string = string.replace(ch[0], ch[1])
@@ -101,12 +98,15 @@ class Scraper:
         """
         return str(datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'))
 
-    def save_props(self, data):
-        self.log("Saving metadata: " + data['id'])
-        try:  # Need this in case 2 threads are making the path at the same time
-            os.makedirs(os.path.dirname(data['save_path']))
+    def create_dir(self, path):
+        try:
+            os.makedirs(os.path.dirname(path))
         except Exception as e:
             pass
+
+    def save_props(self, data):
+        self.log("Saving metadata: " + data['id'])
+        self.create_dir(data['save_path'])
         with open(data['save_path'] + ".json", 'w') as outfile:
             json.dump(data, outfile, sort_keys=True, indent=4)
 
