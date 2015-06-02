@@ -73,6 +73,13 @@ class Scraper:
                 self.log("Error [get_html][UnicodeDecodeError]:" + str(e) + " " + url )
         return html
 
+    def rreplace(self, s, old, new, occurrence):
+        """
+        Taken from: http://stackoverflow.com/questions/2556108/how-to-replace-the-last-occurence-of-an-expression-in-a-string
+        """
+        li = s.rsplit(old, occurrence)
+        return new.join(li)
+
     def sanitize(self, string):
         """
         Catch and replace and invalid path chars
