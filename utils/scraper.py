@@ -80,7 +80,10 @@ class Scraper:
         # Blank out whole line
         print(" "*len(self.prev_cstr), end='\r')
         self.prev_cstr = cstr
-        print(cstr, end='\r')
+        try:
+            print(cstr, end='\r')
+        except UnicodeEncodeError:
+            print('Processing...')
         if log:
             self.log(cstr)
 
