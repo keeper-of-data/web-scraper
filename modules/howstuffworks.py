@@ -12,6 +12,15 @@ class HowStuffWorks(Scraper):
     def __init__(self, base_dir, url_header, log_file):
         super().__init__(log_file)
         self._base_dir = base_dir
+        self._completed_urls = []
+        self._completed_articles_csv = self._base_dir + "/articles.csv"
+
+        # Make sure file exists before we try and read form it
+        open(self._completed_articles_csv, 'a').close()
+        # Fill self._completed_urls from articles.csv
+        for line in open(self._completed_articles_csv, 'r'):
+            self._completed_urls.append(line.split(',')[0])
+
         # Use mobile header, the mobile site it much simpler to parse
         #   Reasons:
         #     - Both the Top10 and normal articles have the same html structure
@@ -33,11 +42,6 @@ class HowStuffWorks(Scraper):
         :param id_: id of the first page (always 1 in this case)
         :return:
         """
-        prop = {}
-        prop['id'] = str(id_)
-
-        # Move static assets
-
         # Get number of pages to loop through
         url = "http://www.howstuffworks.com/big.htm?page=1"
         # get the html from the url
@@ -47,7 +51,7 @@ class HowStuffWorks(Scraper):
         soup = BeautifulSoup(html)
         num_pages = int(soup.find("div", {"class": "content"}).h3.get_text().split(' ')[-1].replace(',', ''))
         num_pages = math.ceil(num_pages/500)  # There are 500 results per page
-        num_pages = 1
+
         # Now loop through each page to start parsing the links
         for i in range(1, num_pages + 1):
             self.cprint("Processing link page: " + str(i), log=True)
@@ -59,17 +63,19 @@ class HowStuffWorks(Scraper):
             soup = BeautifulSoup(html)
 
             links = soup.find("ol").find_all("li")
+            # Loop through each link on the page
             for link in links:
                 url = link.a["href"]
+                # Check if we already have this article
+                if str(url) in self._completed_urls:
+                    # If we do move on to next link
+                    continue
                 self.cprint("Processing: " + url.split('/')[-1], log=True)
-                print(url)
 
                 whole_article = self.parse_article(url)
                 # Something went wrong, so skip it
                 if whole_article is False:
                     self.log("Skipping link: " + url)
-                    continue
-                elif whole_article == "exists":
                     continue
 
                 self.cprint("Saving assets: " + whole_article['title'], log=True)
@@ -87,8 +93,16 @@ class HowStuffWorks(Scraper):
                 # Create html file from article
                 self.html_template(whole_article)
 
+                # Add article to completed list
+                self.add_completed(url, whole_article['abs_path'], whole_article['title'])
+
         # Everything was successful
         return True
+
+    def add_completed(self, url, path, title):
+        self._completed_urls.append(url)
+        with open(self._base_dir + "/articles.csv", 'a') as f:
+            f.write(url + "," + path + "," + title + "\n")
 
     def save_article_images(self, article):
         """
@@ -129,7 +143,7 @@ class HowStuffWorks(Scraper):
                     article['content'][idx_page]['page_content'] = article['content'][idx_page]['page_content'].replace(image['src'], abs_src)
 
             # Replace HSW links with local path to file, create pdf of external sites and link locally
-            # WILL ADD BACK LATER
+            # TODO: catch pdfkit errors/timeouts and try a few times before giving up
             # links = page_soup.find_all("a")
             # if len(links) > 0:
             #     for link in links:
@@ -238,17 +252,17 @@ class HowStuffWorks(Scraper):
 
         # Get save path
         article['abs_path'], article['save_path'] = self.get_save_path(url, article['bread_crumbs'])
-        # Skip if we already have it
-        if os.path.isfile(article['save_path'] + '.json'):
-            return "exists"
 
         # Get title & author
         header_soup = page_soup.find("div", {"id": "content-header"})
         article['title'] = header_soup.find("h1").get_text().strip()
         # I need to have a ['id']
         article['id'] = article['title']
-        author = header_soup.find("span", {"class": "content-author"}).a.get_text()
-        article['author'] = " ".join(author.split())
+        try:
+            author = header_soup.find("span", {"class": "content-author"}).a.get_text()
+            article['author'] = " ".join(author.split())
+        except AttributeError:
+            article['author'] = ''
 
         article['content'] = []  # List of content on each page
         # Parse each page in the article
@@ -262,9 +276,8 @@ class HowStuffWorks(Scraper):
             page_content = {}
             # If we are on the last page, parse a bit different
             if idx + 1 == len(links):
-                content = page_soup.find("div", {"class": "editorial-body"})
-                page_content['title'] = "Author's Note"
-                page_content['page_content'] = str(content.find("p"))
+                # last page, skip it
+                continue
             # If we are not on the last page
             else:
                 try:
@@ -320,5 +333,7 @@ class HowStuffWorks(Scraper):
         try:
             with open(article['save_path'] + "index.html", 'w') as f:
                 f.write(html)
-        except Exception as e:
-            pass
+        except UnicodeEncodeError:
+            self.log("UnicodeEncodeError: " + article['save_path'])
+            with open(article['save_path'] + "index.html", 'w') as f:
+                f.write("<h1>Failed to create html file. ERROR: UnicodeEncodeError</h1>")

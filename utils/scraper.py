@@ -83,7 +83,7 @@ class Scraper:
         try:
             print(cstr, end='\r')
         except UnicodeEncodeError:
-            print('Processing...')
+            print('Processing...', end='\r')
         if log:
             self.log(cstr)
 
