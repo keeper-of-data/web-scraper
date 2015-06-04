@@ -66,10 +66,14 @@ class HowStuffWorks(Scraper):
             # Loop through each link on the page
             for link in links:
                 url = link.a["href"]
+
                 # Check if we already have this article
                 if str(url) in self._completed_urls:
-                    # If we do move on to next link
                     continue
+                # Check if url is a quiz (we do not want these, they are interactive flash objects)
+                if str(url).endswith('quiz.htm'):
+                    continue
+
                 self.cprint("Processing: " + url.split('/')[-1], log=True)
 
                 whole_article = self.parse_article(url)
@@ -236,7 +240,8 @@ class HowStuffWorks(Scraper):
         # Get links for each page in the article
         links = []
         page_links = page_soup.find("select", {"id": "pageSelector"})
-        # Skip if not found  (most likely a quiz or some interactive game)
+        # Skip if not found
+        # TODO: Work with articles that are one page
         if not page_links:
             return False
         page_links = page_links.find_all("option")
