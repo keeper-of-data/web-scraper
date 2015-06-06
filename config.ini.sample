@@ -12,7 +12,7 @@
 enabled = false
 ; Location to download the files (trailing slash is optional)
 download_path = ~/Downloads/alpha-wallhaven/
-; Number of files to download each run
+; Number of files to download each run, if 0 it will get everything
 number_of_files = 5
 ; Number of threads the parser should use
 threads = 1
@@ -39,7 +39,7 @@ threads = 1
 enabled = false
 ; Location to download the files (trailing slash is optional)
 download_path = ~/Downloads/it-ebooks/
-; Number of files to download each run
+; Number of files to download each run, if 0 it will get everything
 number_of_files = 5
 ; Number of threads the parser should use
 threads = 1
@@ -50,7 +50,7 @@ threads = 1
 enabled = false
 ; Location to download the files (trailing slash is optional)
 download_path = ~/Downloads/tuebl/
-; Number of files to download each run
+; Number of files to download each run, if 0 it will get everything
 number_of_files = 5
 ; Number of threads the parser should use
 threads = 1
@@ -68,7 +68,7 @@ enabled = false
 search = user
 ; Location to download the files (trailing slash is optional)
 download_path = ~/Downloads/icoinfinder/
-; Number of pages to parse
+; Number of pages to parse, if 0 it will get everything
 number_of_files = 5
 ; Only ever use one thread here, the downloads are threaded internally
 threads = 1
@@ -79,7 +79,7 @@ threads = 1
 enabled = false
 ; Location to download the files (trailing slash is optional)
 download_path = ~/Downloads/findicons/
-; Number of files to download each run
+; Number of files to download each run, if 0 it will get everything
 number_of_files = 5
 ; Only ever use one thread here, the downloads are threaded internally
 threads = 1
@@ -95,7 +95,7 @@ threads = 1
 enabled = false
 ; Location to download the files (trailing slash is optional)
 download_path = ~/Downloads/xkcd/
-; Number of files to download each run
+; Number of files to download each run, if 0 it will get everything
 number_of_files = 5
 ; Number of threads the parser should use
 threads = 1
@@ -106,7 +106,7 @@ threads = 1
 enabled = false
 ; Location to download the files (trailing slash is optional)
 download_path = ~/Downloads/xkcd-whatif/
-; Number of files to download each run
+; Number of files to download each run, if 0 it will get everything
 number_of_files = 5
 ; Number of threads the parser should use
 threads = 1
@@ -117,7 +117,7 @@ threads = 1
 enabled = true
 ; Location to download the files (trailing slash is optional)
 download_path = ~/Downloads/questionablecontent/
-; Number of files to download each run
+; Number of files to download each run, if 0 it will get everything
 number_of_files = 5
 ; Number of threads the parser should use
 threads = 1
@@ -133,7 +133,7 @@ threads = 1
 enabled = false
 ; Location to download the files (trailing slash is optional)
 download_path = ~/Downloads/how-stuff-works
-; This site has pages
+; This site has pages, keep this at 1
 number_of_files = 1
 ; Only ever use one thread here, the downloads are threaded internally
 threads = 1
