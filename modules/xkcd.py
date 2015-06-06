@@ -12,7 +12,7 @@ class Xkcd(Scraper):
 
     def get_latest(self):
         """
-        Parse `http://xkcd.com` and get the id of the newest book
+        Uses xkcd's api at https://xkcd.com/json.html
         :return: id of the newest item
         """
         print(self.log("##\tGetting newest upload id..."))
@@ -25,13 +25,18 @@ class Xkcd(Scraper):
 
     def parse(self, id_):
         """
-        Using BeautifulSoup, parse the page for the comic and its data
+        Using the json api, get the comic and its info
         :param id_: id of the comic on `http://xkcd.com`
         :return:
         """
+        # There is no 0 comic
+        # 404 does not exists
+        if id_ == 0 or id_ == 404:
+            return True
+
         url = "http://xkcd.com/" + str(id_) + "/info.0.json"
         prop = requests.get(url).json()
-        # prop Needs an id field
+        # prop Needs an id
         prop['id'] = str(prop['num'])
 
         # #####
