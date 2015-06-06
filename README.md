@@ -6,6 +6,7 @@ Developed using Python 3.4
 ## Dependencies
 - BeautifulSoup4
 - pdfkit
+- requests
 
 ## Usage
 - **Config:** Rename config.ini.sample to config.ini and edit to your needs
