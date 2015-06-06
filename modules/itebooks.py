@@ -15,7 +15,7 @@ class ItEbooks(Scraper):
         Parse `http://it-ebooks.info/` and get the id of the newest book
         :return: id of the newest item
         """
-        print(self.log("##\tGetting newest upload id..."))
+        self.cprint("##\tGetting newest upload id...\n", log=True)
         url = "http://it-ebooks.info/"
         # get the html from the url
         try:
@@ -23,7 +23,7 @@ class ItEbooks(Scraper):
         except RequestsError as e:
             return 0
         max_id = soup.find("td", {"width": 120}).find("a")['href'].split('/')[-2]
-        print(self.log("##\tNewest upload: " + max_id))
+        self.cprint("##\tNewest upload: " + max_id  + "\n", log=True)
         return int(max_id)
 
     def parse(self, id_):

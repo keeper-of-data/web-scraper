@@ -40,7 +40,7 @@ class HowStuffWorks(Scraper):
         All processing is done below in parse()
         :return: id of the newest item
         """
-        print(self.log("##\tGetting newest upload id..."))
+        self.cprint("##\tGetting newest upload id...\n", log=True)
         return 0
 
     def parse(self, id_):

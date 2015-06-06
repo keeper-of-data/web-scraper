@@ -14,7 +14,7 @@ class QuestionableContent(Scraper):
         Parse `http://questionablecontent.net/` and get the id of the newest comic
         :return: id of the newest item
         """
-        print(self.log("##\tGetting newest upload id..."))
+        self.cprint("##\tGetting newest upload id...\n", log=True)
         url = "http://questionablecontent.net/archive.php"
         # get the html from the url
         try:
@@ -22,7 +22,7 @@ class QuestionableContent(Scraper):
         except RequestsError as e:
             return 0
         max_id = int(soup.find("div", {"id": "archive"}).a['href'].split('=')[-1])
-        print(self.log("##\tNewest upload: " + str(max_id)))
+        self.cprint("##\tNewest upload: " + str(max_id) + "\n", log=True)
         return max_id
 
     def parse(self, id_):

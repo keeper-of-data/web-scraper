@@ -14,7 +14,7 @@ class Xkcd(Scraper):
         Uses xkcd's api at https://xkcd.com/json.html
         :return: id of the newest item
         """
-        print(self.log("##\tGetting newest upload id..."))
+        self.cprint("##\tGetting newest upload id...\n", log=True)
         url = "http://xkcd.com/info.0.json"
         # Get the json data
         try:
@@ -22,7 +22,7 @@ class Xkcd(Scraper):
         except RequestsError as e:
             return 0
         max_id = data['num']
-        print(self.log("##\tNewest upload: " + str(max_id)))
+        self.cprint("##\tNewest upload: " + str(max_id) + "\n", log=True)
         return int(max_id)
 
     def parse(self, id_):

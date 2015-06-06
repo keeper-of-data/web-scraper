@@ -16,7 +16,7 @@ class FindIcons(Scraper):
         Parse `findicons.com` and get the id of the newest icons
         :return: id of the newest item
         """
-        print(self.log("##\tGetting last page of content..."))
+        self.cprint("##\tGetting last page of content...\n", log=True)
         url = "http://findicons.com/pack"
         # get the html from the url
         try:
@@ -24,7 +24,7 @@ class FindIcons(Scraper):
         except RequestsError as e:
             return 0
         max_id = soup.find("div", {"class": "pages"}).findAll("a")[-2].getText()
-        print(self.log("##\tLast Page: " + max_id))
+        self.cprint("##\tLast Page: " + max_id + "\n", log=True)
         return int(max_id)
 
     def parse(self, id_):
@@ -44,7 +44,7 @@ class FindIcons(Scraper):
             num = q.get()
             dl_link = self._page_icons[num][0]
             save_path = self._page_icons[num][1]
-            print("Downloading: " + dl_link, end='\r')
+            self.cprint("Downloading: " + dl_link)
             self.download(dl_link, save_path, self._url_header)
 
             q.task_done()

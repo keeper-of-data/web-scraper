@@ -14,7 +14,7 @@ class Tuebl(Scraper):
         Parse `http://tuebl.ca/browse/new` and get the id of the newest book
         :return: id of the newest item
         """
-        print(self.log("##\tGetting newest upload id..."))
+        self.cprint("##\tGetting newest upload id...\n", log=True)
         url = "http://tuebl.ca/browse/new"
         # get the html from the url
         try:
@@ -22,7 +22,7 @@ class Tuebl(Scraper):
         except RequestsError as e:
             return 0
         max_id = soup.find("h2", {"class": "book-title"}).a['href'].split('/')[-1]
-        print(self.log("##\tNewest upload: " + max_id))
+        self.cprint("##\tNewest upload: " + max_id + "\n", log=True)
         return int(max_id)
 
     def parse(self, id_):

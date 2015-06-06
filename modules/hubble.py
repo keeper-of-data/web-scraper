@@ -16,7 +16,7 @@ class Hubble(Scraper):
         Will always be 1 because we are viewing all content on a single page
         :return: id of the newest item
         """
-        print(self.log("##\tGetting max page number..."))
+        self.cprint("##\tGetting max page number...\n", log=True)
         return 1
 
     def parse(self, id_):
@@ -42,7 +42,7 @@ class Hubble(Scraper):
             file_name = image['id'] + " - " + self.sanitize(image['title']) + ".txt"
             title_file = path_base + file_name
             # The `" "*n` is to blank the rest of the line
-            print(self.log("Checking: " + image['id'] + " "*20), end='\r')
+            self.cprint("Checking: " + image['id'] + " "*20, log=True)
 
             # Check to see if we already have the data
             if not os.path.isfile(title_file):
@@ -158,6 +158,6 @@ class Hubble(Scraper):
 
     def _download(self, url, path_base, title_file):
         # The `" "*n` is to blank the rest of the line
-        print(self.log("Downloading: " + url + " "*10), end='\r')
+        self.cprint("Downloading: " + url + " "*10, log=True)
         file_name = url.split('/')[-1]
         self.download(url, path_base + file_name, self._url_header)

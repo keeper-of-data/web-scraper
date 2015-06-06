@@ -16,7 +16,7 @@ class WhatIf(Scraper):
         Parse `http://what-if.xkcd.com` and get the id of the newest book
         :return: id of the newest item
         """
-        print(self.log("##\tGetting newest upload id..."))
+        self.cprint("##\tGetting newest upload id...\n", log=True)
         url = "http://what-if.xkcd.com/"
         # get the html from the url
         try:
@@ -25,7 +25,7 @@ class WhatIf(Scraper):
             return 0
         max_id = int(soup.find("li", {"class": "nav-prev"}).a['href'].split('/')[1])
         max_id += 1
-        print(self.log("##\tNewest upload: " + str(max_id)))
+        self.cprint("##\tNewest upload: " + str(max_id) + "\n", log=True)
         return max_id
 
     def parse(self, id_):

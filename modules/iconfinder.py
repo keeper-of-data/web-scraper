@@ -19,7 +19,7 @@ class IconFinder(Scraper):
         Parse `iconfinder.com` and get the id of the newest icons
         :return: id of the newest item
         """
-        print(self.log("##\tGetting last page of content..."))
+        self.cprint("##\tGetting last page of content...\n", log=True)
         page_check = 20
         prev_page = [0, 0]
         for page in range(100):
@@ -31,12 +31,12 @@ class IconFinder(Scraper):
             else:
                 page_check -= int(abs(page_check-prev_page[-2])/2)
         max_page = page_check + 1
-        print(self.log("##\tMax Page: " + str(max_page)))
+        self.cprint("##\tMax Page: " + str(max_page) + "\n", log=True)
 
         return max_page
 
     def _is_page(self, page):
-        url = "https://www.iconfinder.com/ajax/search/?page="+str(page)+"&price=free&q="+self._search_term
+        url = "https://www.iconfinder.com/ajax/search/?page=" + str(page) + "&price=free&q=" + self._search_term
         # get the html from the url
         try:
             soup = self.get_site(url, self._url_header)
@@ -108,7 +108,7 @@ class IconFinder(Scraper):
             num = q.get()
             dl_link = self._page_icons[num][0]
             save_path = self._page_icons[num][1]
-            print("Downloading: " + dl_link, end='\r')
+            self.cprint("Downloading: " + dl_link)
             self.download(dl_link, save_path, self._url_header)
 
             q.task_done()

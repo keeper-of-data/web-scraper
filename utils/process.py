@@ -5,11 +5,12 @@ from utils.scraper import Scraper
 
 
 class Process(Scraper):
+
     def __init__(self, site, base_dir, search_term, parse_count=10, threads=1):
         self._search_term = search_term
         self._base_dir = base_dir
-        self._progress_file = self._base_dir + "/progress" + self._search_term
-        self.log_file = self._base_dir + "/logs" + self._search_term
+        self._progress_file = os.path.join(self._base_dir, "progress-" + self._search_term)
+        self.log_file = os.path.join(self._base_dir, "logs-" + self._search_term)
         self._url_header = {'User-Agent': 'Mozilla/4.0 (compatible; MSIE 5.5; Windows NT)'}
         self._last_id = 0
         self._max_id = 0
@@ -17,6 +18,7 @@ class Process(Scraper):
         self._threads = threads
         self._q = queue.Queue()
         super().__init__(self.log_file)
+
         if self._search_term != '':
             self.site = site(self._base_dir, self._url_header, self.log_file, self._search_term)
         else:
@@ -29,7 +31,7 @@ class Process(Scraper):
         if os.path.isfile(self._progress_file):
             with open(self._progress_file, 'r') as outfile:
                 start_val = int(outfile.read())
-        print(self.log("##\tStarting at: " + str(start_val)))
+        self.cprint("##\tStarting at: " + str(start_val) + "\n", log=True)
 
         # Find out where to stop
         end_val = start_val + self._parse_count
@@ -56,7 +58,7 @@ class Process(Scraper):
     def _thread_setup(self):
         while True:
             num = self._q.get()
-            print(self.log("Processing: " + str(num)), end='\r')
+            self.cprint("Processing: " + str(num), log=True)
             self.site.parse(num)
             # Having self._last_id here, it may reparse the same thing on next run
             #   because the last item processed may not have been the last item in the list because it is async
