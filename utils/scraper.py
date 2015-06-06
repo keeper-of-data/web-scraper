@@ -56,6 +56,7 @@ class Scraper:
         return save_path, name_hash
 
     def get_html(self, url, header={}):
+        html = False
         request = urllib.request.Request(url, headers=header)
         try:
             response = urllib.request.urlopen(request)
@@ -63,14 +64,12 @@ class Scraper:
             # Something went wrong, abort
             self.error(e.code, url)
             self.log("Error [get_html]: " + str(e.code) + " " + url)
-            return False
         else:
             try:
                 # replace char it cannot read
                 html = response.read().decode('utf-8', 'replace')
             except UnicodeDecodeError as e:
                 self.log("Error [get_html][UnicodeDecodeError]:" + str(e) + " " + url )
-                return False
         return html
 
     def cprint(self, cstr, log=False):

@@ -56,7 +56,9 @@ class HowStuffWorks(Scraper):
         html = self.get_html(url, self._url_header)
         if not html:
             return False
+
         soup = BeautifulSoup(html)
+
         num_pages = int(soup.find("div", {"class": "content"}).h3.get_text().split(' ')[-1].replace(',', ''))
         num_pages = math.ceil(num_pages/500)  # There are 500 results per page
 
@@ -220,6 +222,8 @@ class HowStuffWorks(Scraper):
         :return: BeautifulSoup object
         """
         html = self.get_html(url, self._url_header)
+        if not html:
+            return False
         soup = BeautifulSoup(html)
         return soup
 
@@ -251,6 +255,8 @@ class HowStuffWorks(Scraper):
         :return:
         """
         page_soup = self.get_soup(url)
+        if not page_soup:
+            return False
 
         # Get links for each page in the article
         links = []
