@@ -52,8 +52,10 @@ if __name__ == "__main__":
             dl_path = os.path.expanduser(config[site]['download_path'])
             num_files = int(config[site]['number_of_files'])
             threads = int(config[site]['threads'])
-            try: search = config[site]['search'].split(',')
-            except KeyError as e: search = []
+            try:
+                search = config[site]['search'].split(',')
+            except KeyError as e:
+                search = []
             if search:
                 for term in search:
                     site_term = site+":"+term
