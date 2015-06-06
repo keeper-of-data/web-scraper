@@ -1,3 +1,4 @@
+from utils.exceptions import *
 from bs4 import BeautifulSoup
 from utils.scraper import Scraper
 import re
@@ -17,10 +18,12 @@ class Wallhaven(Scraper):
         print(self.log("##\tGetting newest upload id..."))
         url = "http://alpha.wallhaven.cc/latest"
         # get the html from the url
-        html = self.get_html(url, self._url_header)
-        if not html:
+        try:
+            soup = self.get_site(url, self._url_header)
+        except RequestsError as e:
+            # TODO: if we cant get the data from the site
+            #       skip for now because it may just be a connection issue
             return 0
-        soup = BeautifulSoup(html)
         max_id = soup.find("section", {"class": "thumb-listing-page"}).find("li").a['href'].split('/')[-1]
         print(self.log("##\tNewest upload: " + max_id))
         return int(max_id)
@@ -36,10 +39,11 @@ class Wallhaven(Scraper):
 
         url = "http://alpha.wallhaven.cc/wallpaper/" + prop['id']
         # get the html from the url
-        html = self.get_html(url, self._url_header)
-        if not html:
+        try:
+            soup = self.get_site(url, self._url_header)
+        except RequestsError as e:
             return False
-        soup = BeautifulSoup(html)
+        
 
         # Find all sidebar data
         sidebar = soup.find("aside", {"id": "showcase-sidebar"})
@@ -97,7 +101,7 @@ class Wallhaven(Scraper):
         #####
         file_ext = self.get_file_ext(img_src)
         file_name = "alphaWallhaven-" + prop['id']
-        prop['save_path'], prop['hash'] = self.create_save_path(self._base_dir, file_name)
+        prop['save_path'], prop['hash'] = self.create_hashed_path(self._base_dir, file_name)
         prop['save_path'] += file_name + file_ext
         if self.download(img_src, prop['save_path'], self._url_header):
             self.save_props(prop)

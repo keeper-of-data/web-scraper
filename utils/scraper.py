@@ -1,12 +1,14 @@
 import os
-from datetime import datetime
-import urllib.request
-import urllib.error
 import json
 import hashlib
+import requests
+from bs4 import BeautifulSoup
+from datetime import datetime
+from utils.exceptions import *
 
 
 class Scraper:
+
     def __init__(self, log_file):
         self._errors = {}
         # Set default log path
@@ -18,27 +20,27 @@ class Scraper:
         self.log("Starting download: " + url)
         self.create_dir(file_path)
         try:
-            # Only download if we do not have it.
-            if not os.path.isfile(file_path):
-                with urllib.request.urlopen(
-                    urllib.request.Request(url, headers=header)) as response, \
-                        open(file_path, 'wb') as out_file:
-                            data = response.read()
-                            out_file.write(data)
-        except urllib.error.HTTPError as e:
-            # Something went wrong, abort
-            self.error(e.code, url)
-            self.log("Error [download]: " + str(e.code) + " " + url)
-        except Exception as e:
-            print(self.log("Exception [download]: " + str(e) + " " + url))
-        # TODO: Check if dl was successful
-        return True
+            response = requests.get(url, stream=True)
+            if response.status_code == 200:
+                with open(file_path, 'wb') as f:
+                    for chunk in response.iter_content():
+                        f.write(chunk)
+                return_value = True
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            return_value = False
+            self.log("Error [download]: " + str(e.response.status_code) + " " + url)
+        except requests.exceptions.ConnectionError as e:
+            return_value = False
+            self.log("Exception [download]: " + str(e) + " " + url)
+
+        return return_value
 
     def get_file_ext(self, url):
         file_name, file_extension = os.path.splitext(url)
         return file_extension
 
-    def create_save_path(self, base_path, name):
+    def create_hashed_path(self, base_path, name):
         """
         Create a directory structure using the hashed filename
         :return: string of the path to save to not including filename/ext
@@ -55,22 +57,27 @@ class Scraper:
             save_path += name_hash[start:end] + "/"
         return save_path, name_hash
 
-    def get_html(self, url, header={}):
-        html = False
-        request = urllib.request.Request(url, headers=header)
+    def get_site(self, url, header={}, is_json=False):
+        """
+        Try and return soup or json content, if not throw a RequestsError
+        """
         try:
-            response = urllib.request.urlopen(request)
-        except urllib.error.HTTPError as e:
-            # Something went wrong, abort
-            self.error(e.code, url)
-            self.log("Error [get_html]: " + str(e.code) + " " + url)
-        else:
-            try:
-                # replace char it cannot read
-                html = response.read().decode('utf-8', 'replace')
-            except UnicodeDecodeError as e:
-                self.log("Error [get_html][UnicodeDecodeError]:" + str(e) + " " + url )
-        return html
+            response = requests.get(url, headers=header)
+            if response.status_code == requests.codes.ok:
+                if is_json:
+                    data = response.json()
+                else:
+                    data = BeautifulSoup(response.text)
+
+                return data 
+                
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            self.log("HTTPError [get_site]: " + str(e.response.status_code) + " " + url)
+            raise RequestsError(str(e))
+        except requests.exceptions.ConnectionError as e:
+            self.log("ConnectionError [get_site]: " + str(e) + " " + url)
+            raise RequestsError(str(e))
 
     def cprint(self, cstr, log=False):
         """
