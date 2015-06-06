@@ -1,10 +1,11 @@
-import os
-from bs4 import BeautifulSoup
+from utils.exceptions import *
 from utils.scraper import Scraper
+import os
 import re
 
 
 class Hubble(Scraper):
+
     def __init__(self, base_dir, url_header, log_file):
         super().__init__(log_file)
         self._base_dir = base_dir
@@ -28,10 +29,10 @@ class Hubble(Scraper):
         url_base = "http://hubblesite.org"
         url = url_base + "/gallery/album/entire/npp/all/"
         # get the html from the url
-        html = self.get_html(url, self._url_header)
-        if not html:
-            return False
-        soup = BeautifulSoup(html)
+        try:
+            soup = self.get_site(url, self._url_header)
+        except RequestsError as e:
+            return
 
         image_block = soup.find("div", {"id": "ListBlock"})
         image_list = image_block.find_all("a", {"class": "icon"})
@@ -46,10 +47,10 @@ class Hubble(Scraper):
             # Check to see if we already have the data
             if not os.path.isfile(title_file):
                 img_url = url_base + image['href']
-                img_html = self.get_html(img_url, self._url_header)
-                if not img_html:
-                    continue
-                img_soup = BeautifulSoup(img_html)
+                try:
+                    img_soup = self.get_site(img_url, self._url_header)
+                except RequestsError as e:
+                    return
                 # Check to see if we are on the new or the old site
                 img_list = img_soup.find("div", {"id": "download-links-holder"})  # New site
                 if img_list is None:  # Old Site
@@ -79,15 +80,18 @@ class Hubble(Scraper):
         img_hires_link = img_list.find("a", text=re.compile('Highest-quality download options'))
         if img_hires_link is not None:
             self.log("[NEW] Get high res")
-            hires_url = img_hires_link['href']
-            hires_html = self.get_html(url_base + hires_url, self._url_header)
-            hires_soup = BeautifulSoup(hires_html)
-            hires_list = hires_soup.find("div", {"id": "download-links-holder"})
-            hires_links = hires_list.find_all("li")
-            for hires_link in hires_links:
-                hires_dl_url = hires_link.a['href']
-                # Download this
-                dl_list.append(hires_dl_url)
+            hires_url = url_base + img_hires_link['href']
+            try:
+                hires_soup = self.get_site(hires_url, self._url_header)
+            except RequestsError as e:
+                self.log("Skipping image: " + str(hires_url))
+            else:
+                hires_list = hires_soup.find("div", {"id": "download-links-holder"})
+                hires_links = hires_list.find_all("li")
+                for hires_link in hires_links:
+                    hires_dl_url = hires_link.a['href']
+                    # Add to download list
+                    dl_list.append(hires_dl_url)
 
         self.log("[NEW] Get other")
         # Get all other images
@@ -96,10 +100,14 @@ class Hubble(Scraper):
             link_url = img_link.a['href']
             img_dl_url = link_url
             if link_url.endswith('/'):
-                link_html = self.get_html(url_base + link_url, self._url_header)
-                link_soup = BeautifulSoup(link_html)
-                img_dl_url = link_soup.find("div", {"class": "subpage-body"}).img['src']
-            # Download this
+                link_url = url_base + link_url
+                try:
+                    link_soup = self.get_site(link_url, self._url_header)
+                except RequestsError as e:
+                    self.log("Skipping image: " + str(link_url))
+                else:
+                    img_dl_url = link_soup.find("div", {"class": "subpage-body"}).img['src']
+            # Add to download list
             dl_list.append(img_dl_url)
 
         return dl_list
@@ -116,15 +124,18 @@ class Hubble(Scraper):
         img_hires_link = img_list.find("a", text=re.compile('Highest-quality download options'))
         if img_hires_link is not None:
             self.log("[OLD] Get high res")
-            hires_url = img_hires_link['href']
-            hires_html = self.get_html(url_base + hires_url, self._url_header)
-            hires_soup = BeautifulSoup(hires_html)
-            hires_list = hires_soup.find("div", {"id": "image-format-container"})
-            hires_links = hires_list.find_all("li")
-            for hires_link in hires_links:
-                hires_dl_url = hires_link.a['href']
-                # Download this
-                dl_list.append(hires_dl_url)
+            hires_url = url_base + img_hires_link['href']
+            try:
+                hires_soup = self.get_site(hires_url, self._url_header)
+            except RequestsError as e:
+                self.log("Skipping image: " + str(hires_url))
+            else:
+                hires_list = hires_soup.find("div", {"id": "image-format-container"})
+                hires_links = hires_list.find_all("li")
+                for hires_link in hires_links:
+                    hires_dl_url = hires_link.a['href']
+                    # Download this
+                    dl_list.append(hires_dl_url)
 
         self.log("[OLD] Get other")
         # Get all other images
@@ -133,9 +144,13 @@ class Hubble(Scraper):
             link_url = link['href']
             img_dl_url = link_url
             if link_url.endswith('/'):
-                link_html = self.get_html(url_base + link_url, self._url_header)
-                link_soup = BeautifulSoup(link_html)
-                img_dl_url = link_soup.find("div", {"class": "image-view"}).img['src']
+                link_url = url_base + link_url
+                try:
+                    link_soup = self.get_site(link_url, self._url_header)
+                except RequestsError as e:
+                    self.log("Skipping image: " + str(link_url))
+                else:
+                    img_dl_url = link_soup.find("div", {"class": "image-view"}).img['src']
             # Download this
             dl_list.append(img_dl_url)
 

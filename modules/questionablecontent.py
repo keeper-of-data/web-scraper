@@ -1,4 +1,4 @@
-from bs4 import BeautifulSoup
+from utils.exceptions import *
 from utils.scraper import Scraper
 
 
@@ -17,10 +17,10 @@ class QuestionableContent(Scraper):
         print(self.log("##\tGetting newest upload id..."))
         url = "http://questionablecontent.net/archive.php"
         # get the html from the url
-        html = self.get_html(url, self._url_header)
-        if not html:
+        try:
+            soup = self.get_site(url, self._url_header)
+        except RequestsError as e:
             return 0
-        soup = BeautifulSoup(html)
         max_id = int(soup.find("div", {"id": "archive"}).a['href'].split('=')[-1])
         print(self.log("##\tNewest upload: " + str(max_id)))
         return max_id
@@ -37,14 +37,13 @@ class QuestionableContent(Scraper):
         url = base_url + "/view.php?comic=" + prop['id']
 
         # get the html from the url
-        html = self.get_html(url, self._url_header)
-        if not html:
-            return False
-        soup = BeautifulSoup(html)
+        try:
+            soup = self.get_site(url, self._url_header)
+        except RequestsError as e:
+            return
 
         src = soup.find("img", {"id": "strip"})['src']
         prop['img'] = base_url + src
-
 
         #####
         # Download comic

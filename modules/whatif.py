@@ -1,11 +1,11 @@
-from bs4 import BeautifulSoup
+from utils.exceptions import *
 from utils.scraper import Scraper
 import pdfkit
 import os
-import re
 
 
 class WhatIf(Scraper):
+
     def __init__(self, base_dir, url_header, log_file):
         super().__init__(log_file)
         self._base_dir = base_dir
@@ -19,10 +19,10 @@ class WhatIf(Scraper):
         print(self.log("##\tGetting newest upload id..."))
         url = "http://what-if.xkcd.com/"
         # get the html from the url
-        html = self.get_html(url, self._url_header)
-        if not html:
+        try:
+            soup = self.get_site(url, self._url_header)
+        except RequestsError as e:
             return 0
-        soup = BeautifulSoup(html)
         max_id = int(soup.find("li", {"class": "nav-prev"}).a['href'].split('/')[1])
         max_id += 1
         print(self.log("##\tNewest upload: " + str(max_id)))
@@ -39,10 +39,10 @@ class WhatIf(Scraper):
         url = "http://what-if.xkcd.com/" + prop['id']
 
         # get the html from the url
-        html = self.get_html(url, self._url_header)
-        if not html:
-            return False
-        soup = BeautifulSoup(html)
+        try:
+            soup = self.get_site(url, self._url_header)
+        except RequestsError as e:
+            return
 
         article = soup.find("article", {"class": "entry"})
 
@@ -59,7 +59,6 @@ class WhatIf(Scraper):
         self.save_props(prop)
         if not os.path.isfile(prop['save_path']):
             pdfkit.from_url(url, prop['save_path'])
-
 
         # Everything was successful
         return True

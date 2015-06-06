@@ -1,10 +1,12 @@
-from bs4 import BeautifulSoup
+from utils.exceptions import *
 from utils.scraper import Scraper
 import os
 import queue
 import threading
 
+
 class IconFinder(Scraper):
+
     def __init__(self, base_dir, url_header, log_file, search_term):
         super().__init__(log_file)
         self._search_term = search_term
@@ -19,7 +21,7 @@ class IconFinder(Scraper):
         """
         print(self.log("##\tGetting last page of content..."))
         page_check = 20
-        prev_page = [0,0]
+        prev_page = [0, 0]
         for page in range(100):
             prev_page.append(page_check)
             if page_check == prev_page[-2]:
@@ -36,8 +38,10 @@ class IconFinder(Scraper):
     def _is_page(self, page):
         url = "https://www.iconfinder.com/ajax/search/?page="+str(page)+"&price=free&q="+self._search_term
         # get the html from the url
-        html = self.get_html(url, self._url_header)
-        soup = BeautifulSoup(html)
+        try:
+            soup = self.get_site(url, self._url_header)
+        except RequestsError as e:
+            return False
         # Check for 404 page, not caught in get_html because the site does not throw a 404 error
         return not soup.find("div", {"class": "no-results"})
 
@@ -52,10 +56,10 @@ class IconFinder(Scraper):
 
         url = "https://www.iconfinder.com/ajax/search/?page="+prop['id']+"&price=free&q="+self._search_term
         # get the html from the url
-        html = self.get_html(url, self._url_header)
-        if not html:
-            return False
-        soup = BeautifulSoup(html)
+        try:
+            soup = self.get_site(url, self._url_header)
+        except RequestsError as e:
+            return
         # Check for 404 page, not caught in get_html because the site does not throw a 404 error
         if self._is_page(id_) is False:
             return False
@@ -68,17 +72,18 @@ class IconFinder(Scraper):
             for link in links:
                 icon_id = link['data-icon-id']
                 dl_link = "https://www.iconfinder.com" + link['href']
-                format = link['data-format']
-                try: size = link['data-size']
-                except Exception as e: size = ''
+                icon_format = link['data-format']
+                try:
+                    size = link['data-size']
+                except Exception as e: 
+                    size = ''
 
                 # save dl_link and path
-                file = self._search_term + "-" + icon_id + "-" + size + "." + format
-                save_path = self._base_dir + "/" + self._search_term + "/" + icon_id +"/"+ file
+                icon_file = self._search_term + "-" + icon_id + "-" + size + "." + icon_format
+                save_path = self._base_dir + "/" + self._search_term + "/" + icon_id + "/" + icon_file
 
                 if not os.path.isfile(save_path):
                     self._page_icons.append([dl_link, save_path])
-
 
         # Done processing page
         # Download all icons on page
@@ -86,7 +91,7 @@ class IconFinder(Scraper):
         q = queue.Queue()
         threads = 10
         for i in range(threads):
-            t = threading.Thread(target=self._dl_setup, args = (q,))
+            t = threading.Thread(target=self._dl_setup, args=(q,))
             t.daemon = True
             t.start()
 
@@ -94,7 +99,6 @@ class IconFinder(Scraper):
         for item_id in range(len(self._page_icons)):
             q.put(item_id)
         q.join()
-
 
         # Everything was successful
         return True

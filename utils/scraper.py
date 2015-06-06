@@ -20,7 +20,7 @@ class Scraper:
         self.log("Starting download: " + url)
         self.create_dir(file_path)
         try:
-            response = requests.get(url, stream=True)
+            response = requests.get(url, headers=header, stream=True)
             if response.status_code == 200:
                 with open(file_path, 'wb') as f:
                     for chunk in response.iter_content():

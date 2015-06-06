@@ -114,7 +114,7 @@ threads = 1
 ; http://questionablecontent.com/
 [questionablecontent]
 ; If false, this site will NOT be parsed
-enabled = true
+enabled = false
 ; Location to download the files (trailing slash is optional)
 download_path = ~/Downloads/questionablecontent/
 ; Number of files to download each run, if 0 it will get everything
@@ -132,7 +132,7 @@ threads = 1
 ; If false, this site will NOT be parsed
 enabled = false
 ; Location to download the files (trailing slash is optional)
-download_path = ~/Downloads/how-stuff-works
+download_path = ~/Downloads/how-stuff-works/
 ; This site has pages, keep this at 1
 number_of_files = 1
 ; Only ever use one thread here, the downloads are threaded internally

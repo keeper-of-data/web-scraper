@@ -1,10 +1,9 @@
 from utils.exceptions import *
-from bs4 import BeautifulSoup
 from utils.scraper import Scraper
-import re
 
 
 class Wallhaven(Scraper):
+
     def __init__(self, base_dir, url_header, log_file):
         super().__init__(log_file)
         self._base_dir = base_dir
@@ -43,7 +42,6 @@ class Wallhaven(Scraper):
             soup = self.get_site(url, self._url_header)
         except RequestsError as e:
             return False
-        
 
         # Find all sidebar data
         sidebar = soup.find("aside", {"id": "showcase-sidebar"})

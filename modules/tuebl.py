@@ -1,8 +1,9 @@
-from bs4 import BeautifulSoup
+from utils.exceptions import *
 from utils.scraper import Scraper
 
 
 class Tuebl(Scraper):
+
     def __init__(self, base_dir, url_header, log_file):
         super().__init__(log_file)
         self._base_dir = base_dir
@@ -16,10 +17,10 @@ class Tuebl(Scraper):
         print(self.log("##\tGetting newest upload id..."))
         url = "http://tuebl.ca/browse/new"
         # get the html from the url
-        html = self.get_html(url, self._url_header)
-        if not html:
+        try:
+            soup = self.get_site(url, self._url_header)
+        except RequestsError as e:
             return 0
-        soup = BeautifulSoup(html)
         max_id = soup.find("h2", {"class": "book-title"}).a['href'].split('/')[-1]
         print(self.log("##\tNewest upload: " + max_id))
         return int(max_id)
@@ -35,10 +36,10 @@ class Tuebl(Scraper):
 
         url = "http://tuebl.ca/books/" + prop['id']
         # get the html from the url
-        html = self.get_html(url, self._url_header)
-        if not html:
-            return False
-        soup = BeautifulSoup(html)
+        try:
+            soup = self.get_site(url, self._url_header)
+        except RequestsError as e:
+            return
 
         # Find data
         prop['title'] = soup.find("h2", {"class": "section-title"}).getText().strip()
@@ -80,13 +81,16 @@ class Tuebl(Scraper):
         if len(path_title) > 32:
             path_title = path_title[0:32] + "%"
 
-        prop['save_path'] = self._base_dir + "/" + first_letter + "/" + first_two_letters + "/" + prop['author_name'] + "/" + path_title + "/"
-        prop['save_path_cover'] = prop['save_path'] + file_name + file_ext_cover
+        prop['save_path'] = self._base_dir + "/" + first_letter + "/" + first_two_letters + "/"
+        prop['save_path'] += prop['author_name'] + "/" + path_title + "/"
         prop['save_path'] += file_name + file_ext_book
+        prop['save_path_cover'] = prop['save_path'] + file_name + file_ext_cover
 
-        if self.download(book_cover_url, prop['save_path_cover'], self._url_header) \
-                and self.download(book_dl_url, prop['save_path'], self._url_header):
-            self.save_props(prop)
+        if not self.download(book_cover_url, prop['save_path_cover'], self._url_header):
+            self.log("Failed to save cover image: " + prop['save_path_cover'])
+        if not self.download(book_dl_url, prop['save_path'], self._url_header):
+            self.log("Failed to save ebook: " + prop['save_path_cover'])
+        self.save_props(prop)
 
         # Everything was successful
         return True

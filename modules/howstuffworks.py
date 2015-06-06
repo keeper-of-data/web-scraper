@@ -1,10 +1,9 @@
-import os
-import re
-import math
-import urllib.request
-import pdfkit
-from bs4 import BeautifulSoup
+from utils.exceptions import *
 from utils.scraper import Scraper
+from bs4 import BeautifulSoup
+import os
+import math
+import pdfkit
 
 
 class HowStuffWorks(Scraper):
@@ -53,11 +52,10 @@ class HowStuffWorks(Scraper):
         # Get number of pages to loop through
         url = "http://www.howstuffworks.com/big.htm?page=1"
         # get the html from the url
-        html = self.get_html(url, self._url_header)
-        if not html:
-            return False
-
-        soup = BeautifulSoup(html)
+        try:
+            soup = self.get_site(url, self._url_header)
+        except RequestsError as e:
+            return
 
         num_pages = int(soup.find("div", {"class": "content"}).h3.get_text().split(' ')[-1].replace(',', ''))
         num_pages = math.ceil(num_pages/500)  # There are 500 results per page
@@ -67,10 +65,10 @@ class HowStuffWorks(Scraper):
             self.cprint("Processing link page: " + str(i), log=True)
             url = "http://www.howstuffworks.com/big.htm?page=" + str(i)
             # get the html from the url
-            page_html = self.get_html(url, self._url_header)
-            if not page_html:
-                continue
-            soup = BeautifulSoup(page_html)
+            try:
+                soup = self.get_site(url, self._url_header)
+            except RequestsError as e:
+                return
 
             links = soup.find("ol").find_all("li")
             # Loop through each link on the page
@@ -216,17 +214,6 @@ class HowStuffWorks(Scraper):
         full_save_path = os.path.normcase(full_save_path)
         return (abs_path, full_save_path)
 
-    def get_soup(self, url):
-        """
-        :param url: page url
-        :return: BeautifulSoup object
-        """
-        html = self.get_html(url, self._url_header)
-        if not html:
-            return False
-        soup = BeautifulSoup(html)
-        return soup
-
     def get_crumbs(self, url=None, soup=None):
         """
         Use soup if you have it, that way les requests are made to the site.
@@ -238,7 +225,10 @@ class HowStuffWorks(Scraper):
         if soup is not None:
             page_soup = soup
         elif url is not None:
-            page_soup = self.get_soup(url)
+            try:
+                page_soup = self.get_site(url, self._url_header)
+            except RequestsError as e:
+                return
         else:
             return []
 
@@ -254,9 +244,10 @@ class HowStuffWorks(Scraper):
         :param url: url of the article
         :return:
         """
-        page_soup = self.get_soup(url)
-        if not page_soup:
-            return False
+        try:
+            page_soup = self.get_site(url, self._url_header)
+        except RequestsError as e:
+            return
 
         # Get links for each page in the article
         links = []
@@ -298,7 +289,10 @@ class HowStuffWorks(Scraper):
             for idx, url in enumerate(links):
                 self.cprint("Processing page: " + str(idx+1) + " of " + str(len(links)) + " - " + article['title'])
                 if idx is not 0:  # We do not need the first page because we got that soup above
-                    page_soup = self.get_soup(url)
+                    try:
+                        page_soup = self.get_site(url, self._url_header)
+                    except RequestsError as e:
+                        continue
                     header_soup = page_soup.find("div", {"id": "content-header"})
 
                 # Parse current page

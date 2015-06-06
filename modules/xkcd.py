@@ -1,5 +1,4 @@
-import requests
-from bs4 import BeautifulSoup
+from utils.exceptions import *
 from utils.scraper import Scraper
 
 
@@ -18,7 +17,10 @@ class Xkcd(Scraper):
         print(self.log("##\tGetting newest upload id..."))
         url = "http://xkcd.com/info.0.json"
         # Get the json data
-        data = requests.get(url).json()
+        try:
+            data = self.get_site(url, self._url_header, is_json=True)
+        except RequestsError as e:
+            return 0
         max_id = data['num']
         print(self.log("##\tNewest upload: " + str(max_id)))
         return int(max_id)
@@ -32,10 +34,13 @@ class Xkcd(Scraper):
         # There is no 0 comic
         # 404 does not exists
         if id_ == 0 or id_ == 404:
-            return True
+            return
 
         url = "http://xkcd.com/" + str(id_) + "/info.0.json"
-        prop = requests.get(url).json()
+        try:
+            prop = self.get_site(url, self._url_header, is_json=True)
+        except RequestsError as e:
+            return
         # prop Needs an id
         prop['id'] = str(prop['num'])
 
