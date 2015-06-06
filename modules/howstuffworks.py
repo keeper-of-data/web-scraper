@@ -13,13 +13,21 @@ class HowStuffWorks(Scraper):
         super().__init__(log_file)
         self._base_dir = base_dir
         self._completed_urls = []
-        self._completed_articles_csv = self._base_dir + "/articles.csv"
+        self._failed_urls = []
+        self._completed_articles_csv = os.path.join(self._base_dir, "articles.csv")
+        self._failed_articles_csv = os.path.join(self._base_dir, "articles_failed.csv")
 
         # Make sure file exists before we try and read form it
-        open(self._completed_articles_csv, 'a').close()
+        open(self.create_dir(self._completed_articles_csv), 'a').close()
         # Fill self._completed_urls from articles.csv
         for line in open(self._completed_articles_csv, 'r'):
             self._completed_urls.append(line.split(',')[0])
+
+        # Make sure file exists before we try and read form it
+        open(self.create_dir(self._failed_articles_csv), 'a').close()
+        # Fill self._failed_urls from articles.csv
+        for line in open(self._failed_articles_csv, 'r'):
+            self._failed_urls.append(line)
 
         # Use mobile header, the mobile site it much simpler to parse
         #   Reasons:
@@ -57,21 +65,22 @@ class HowStuffWorks(Scraper):
             self.cprint("Processing link page: " + str(i), log=True)
             url = "http://www.howstuffworks.com/big.htm?page=" + str(i)
             # get the html from the url
-            html = self.get_html(url, self._url_header)
-            if not html:
-                return False
-            soup = BeautifulSoup(html)
+            page_html = self.get_html(url, self._url_header)
+            if not page_html:
+                continue
+            soup = BeautifulSoup(page_html)
 
             links = soup.find("ol").find_all("li")
             # Loop through each link on the page
             for link in links:
                 url = link.a["href"]
 
-                # Check if we already have this article
-                if str(url) in self._completed_urls:
-                    continue
                 # Check if url is a quiz (we do not want these, they are interactive flash objects)
                 if str(url).endswith('quiz.htm'):
+                    continue
+
+                # Check if we already have this article
+                if str(url) in self._completed_urls or str(url) in self._failed_urls:
                     continue
 
                 self.cprint("Processing: " + url.split('/')[-1], log=True)
@@ -79,10 +88,11 @@ class HowStuffWorks(Scraper):
                 whole_article = self.parse_article(url)
                 # Something went wrong, so skip it
                 if whole_article is False:
-                    self.log("Skipping link: " + url)
+                    self.log("Something Failed: " + url)
+                    self.add_failed(url)
                     continue
 
-                self.cprint("Saving assets: " + whole_article['title'], log=True)
+                self.cprint("Saving assets: " + whole_article['id'], log=True)
                 # Download/save images
                 whole_article = self.save_article_images(whole_article)
 
@@ -103,10 +113,15 @@ class HowStuffWorks(Scraper):
         # Everything was successful
         return True
 
-    def add_completed(self, url, path, title):
+    def add_completed(self, url, article_path, title):
         self._completed_urls.append(url)
-        with open(self._base_dir + "/articles.csv", 'a') as f:
-            f.write(url + "," + path + "," + title + "\n")
+        with open(self._completed_articles_csv, 'a') as f:
+            f.write(url + "," + article_path + "," + title + "\n")
+
+    def add_failed(self, url):
+        self._completed_urls.append(url)
+        with open(self._failed_articles_csv, 'a') as f:
+            f.write(url + "\n")
 
     def save_article_images(self, article):
         """
@@ -240,73 +255,82 @@ class HowStuffWorks(Scraper):
         # Get links for each page in the article
         links = []
         page_links = page_soup.find("select", {"id": "pageSelector"})
-        # Skip if not found
-        # TODO: Work with articles that are one page
-        if not page_links:
-            return False
-        page_links = page_links.find_all("option")
-        for page_link in page_links:
-            page_number = int(page_link.get_text().split(' ')[0])-1
-            page_url = page_link['value']
-            links.insert(page_number, page_url)
 
-        article = {}
+        # Check if article has multipal pages
+        if page_links:
+            page_links = page_links.find_all("option")
+            for page_link in page_links:
+                page_number = int(page_link.get_text().split(' ')[0])-1
+                page_url = page_link['value']
+                links.insert(page_number, page_url)
+        else:
+            # If article is a single page
+            links.append(url)
 
-        # Get bread crumbs
-        article['bread_crumbs'] = self.get_crumbs(soup=page_soup)
-
-        # Get save path
-        article['abs_path'], article['save_path'] = self.get_save_path(url, article['bread_crumbs'])
-
-        # Get title & author
-        header_soup = page_soup.find("div", {"id": "content-header"})
-        article['title'] = header_soup.find("h1").get_text().strip()
-        # I need to have a ['id']
-        article['id'] = article['title']
         try:
-            author = header_soup.find("span", {"class": "content-author"}).a.get_text()
-            article['author'] = " ".join(author.split())
-        except AttributeError:
-            article['author'] = ''
+            article = {}
 
-        article['content'] = []  # List of content on each page
-        # Parse each page in the article
-        for idx, url in enumerate(links):
-            self.cprint("Processing page: " + str(idx+1) + " of " + str(len(links)) + " - " + article['title'])
-            if idx is not 0:  # We do not need the first page because we got that soup above
-                page_soup = self.get_soup(url)
-                header_soup = page_soup.find("div", {"id": "content-header"})
+            # Get bread crumbs
+            article['bread_crumbs'] = self.get_crumbs(soup=page_soup)
 
-            # Parse current page
-            page_content = {}
-            # If we are on the last page, parse a bit different
-            if idx + 1 == len(links):
-                # last page, skip it
-                continue
-            # If we are not on the last page
-            else:
-                try:
-                    page_content['title'] = header_soup.find("h2").get_text().strip()
-                except AttributeError:
-                    page_content['title'] = ''
+            # Get save path
+            article['abs_path'], article['save_path'] = self.get_save_path(url, article['bread_crumbs'])
 
-                media_soup = page_soup.find("div", {"class": "lead-image"})
-                if media_soup:  # if there is an image
-                    page_content['image_orig'] = media_soup.find("img")['src']
+            # Get title & author
+            header_soup = page_soup.find("div", {"id": "content-header"})
+            article['title'] = header_soup.find("h1").get_text().strip()
+            # I need to have a ['id']
+            article['id'] = article['title'] if len(article['title']) > 1 else url.split('/')[-1]
+            try:
+                author = header_soup.find("span", {"class": "content-author"}).a.get_text()
+                article['author'] = " ".join(author.split())
+            except AttributeError:
+                article['author'] = ''
+
+            article['content'] = []  # List of content on each page
+            # Parse each page in the article
+            for idx, url in enumerate(links):
+                self.cprint("Processing page: " + str(idx+1) + " of " + str(len(links)) + " - " + article['title'])
+                if idx is not 0:  # We do not need the first page because we got that soup above
+                    page_soup = self.get_soup(url)
+                    header_soup = page_soup.find("div", {"id": "content-header"})
+
+                # Parse current page
+                page_content = {}
+                # If we are on the last page, parse a bit different
+                if idx + 1 == len(links) and len(links) > 1:
+                    # last page, skip it
+                    continue
+                # If we are not on the last page
+                else:
                     try:
-                        page_content['image_caption'] = media_soup.find("div", {"class": "media-body"}).get_text().strip()
+                        page_content['title'] = header_soup.find("h2").get_text().strip()
                     except AttributeError:
-                        page_content['image_caption'] = ''
-                    try:
-                        page_content['image_credit'] = media_soup.find("div", {"class": "media-sub"}).get_text().strip()
-                    except AttributeError:
-                        page_content['image_credit'] = ''
+                        page_content['title'] = ''
 
-                content = str(page_soup.find("div", {"class": "editorial-body"}))
-                content = content.replace('<div class="editorial-body">', '')  # Remove the parent tag
-                content = self.rreplace(content, '</div>', '', 1)  # Remove the parents div (last div in the string)
-                page_content['page_content'] = content.strip()
-            article['content'].insert(idx, page_content)
+                    media_soup = page_soup.find("div", {"class": "lead-image"})
+                    if media_soup:  # if there is an image
+                        page_content['image_orig'] = media_soup.find("img")['src']
+                        try:
+                            page_content['image_caption'] = media_soup.find("div", {"class": "media-body"}).get_text().strip()
+                        except AttributeError:
+                            page_content['image_caption'] = ''
+                        try:
+                            page_content['image_credit'] = media_soup.find("div", {"class": "media-sub"}).get_text().strip()
+                        except AttributeError:
+                            page_content['image_credit'] = ''
+
+                    content = str(page_soup.find("div", {"class": "editorial-body"}))
+                    # Remove the parent tag
+                    content = content.replace('<div class="editorial-body">', '')
+                    # Remove the parents div (last div in the string)
+                    content = self.rreplace(content, '</div>', '', 1)
+                    page_content['page_content'] = content.strip()
+                article['content'].insert(idx, page_content)
+        except Exception as e:
+            # Something went wrong scraping the page
+            self.log("Exception [" + url + "]: " + str(e))
+            return False
 
         return article
 
