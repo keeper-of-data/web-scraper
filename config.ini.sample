@@ -1,5 +1,5 @@
 ; Current available modules
-; | wallhaven | hubble | itebooks | tuebl | iconfinder | findicons | xkcd | whatif | howstuffworks |
+; | wallhaven | hubble | itebooks | tuebl | iconfinder | findicons | xkcd | whatif | howstuffworks | questionablecontent |
 
 
 ;;;;;;;;;;;;;;;;;;;;;;
@@ -106,6 +106,17 @@ threads = 1
 enabled = false
 ; Location to download the files (trailing slash is optional)
 download_path = ~/Downloads/xkcd-whatif/
+; Number of files to download each run
+number_of_files = 5
+; Number of threads the parser should use
+threads = 1
+
+; http://questionablecontent.com/
+[questionablecontent]
+; If false, this site will NOT be parsed
+enabled = true
+; Location to download the files (trailing slash is optional)
+download_path = ~/Downloads/questionablecontent/
 ; Number of files to download each run
 number_of_files = 5
 ; Number of threads the parser should use

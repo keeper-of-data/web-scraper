@@ -14,6 +14,7 @@ from modules.findicons import FindIcons as findicons
 from modules.xkcd import Xkcd as xkcd
 from modules.whatif import WhatIf as whatif
 from modules.howstuffworks import HowStuffWorks as howstuffworks
+from modules.questionablecontent import QuestionableContent as questionablecontent
 
 
 parser = argparse.ArgumentParser()
