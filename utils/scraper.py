@@ -1,6 +1,7 @@
 import os
 import json
 import hashlib
+import logging
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
@@ -10,11 +11,15 @@ from utils.exceptions import *
 class Scraper:
 
     def __init__(self, log_file):
+        # global logger
         self._errors = {}
         # Set default log path
         self.log_file = log_file
         # Store string of last line printed
         self.prev_cstr = ''
+
+        # Get logger
+        self.logger = logging.getLogger('root')
 
     def download(self, url, file_path, header={}):
         self.log("Starting download: " + url)
@@ -32,7 +37,7 @@ class Scraper:
             self.log("Error [download]: " + str(e.response.status_code) + " " + url)
         except requests.exceptions.ConnectionError as e:
             return_value = False
-            self.log("Exception [download]: " + str(e) + " " + url)
+            self.cprint("\nException [download]: " + str(e) + " " + url + "\n", log=True)
 
         return return_value
 
@@ -85,12 +90,14 @@ class Scraper:
         :param cstr: string to print on current line
         """
         # Blank out whole line
-        print(" "*len(self.prev_cstr), end='\r')
+        #   The +1 is ther just to make sure it clears all chars
+        print(" "*(len(self.prev_cstr) + 1), end='\r')
         self.prev_cstr = cstr
         try:
             print(cstr, end='\r')
         except UnicodeEncodeError:
             print('Processing...', end='\r')
+
         if log:
             self.log(cstr)
 
@@ -157,17 +164,26 @@ class Scraper:
             with open(file + ".json", 'a') as errorfile:
                 json.dump(self._errors, errorfile, sort_keys=True, indent=4)
 
-    def log(self, data):
+    def log(self, msg, level='info'):
         """
-        :param data: Data to save to file
+        :param msg: Data to save to file
+        :param level: Level to which to log msg, default: info
         :return: Data as a string to print to console
         """
-        if not os.path.exists(os.path.dirname(self.log_file)):
-            os.makedirs(os.path.dirname(self.log_file))
-        with open(self.log_file, 'a') as log_file:
-            log_file.write( self.get_time() + "\t" + str(data) + "\n")
+        # global logger
+        msg = msg.strip()
+        if level == 'debug':
+            self.logger.debug(msg)
+        elif level == 'critical':
+            self.logger.critical(msg)
+        elif level == 'error':
+            self.logger.error(msg)
+        elif level == 'warning':
+            self.logger.warning(msg)
+        else:
+            self.logger.info(msg)
 
-        return str(data)
+        return str(msg)
 
     def save_progress(self, file, count):
         """

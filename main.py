@@ -2,6 +2,7 @@ import os
 import sys
 import argparse
 import configparser
+from utils.log import setup_custom_logger
 from utils.process import Process
 # They are imported as all lowercase
 #   so it is case insensitive in the config file
@@ -50,15 +51,22 @@ if __name__ == "__main__":
                 print("\nThere is no module named " + site + "\n")
                 continue
             dl_path = os.path.expanduser(config[site]['download_path'])
+            # Create dl path if not there
+            try:
+                os.makedirs(dl_path)
+            except Exception as e:
+                pass
             num_files = int(config[site]['number_of_files'])
             threads = int(config[site]['threads'])
+            log_file = os.path.join(dl_path, site + '.log')
+            logger = setup_custom_logger('root', log_file)
             try:
                 search = config[site]['search'].split(',')
             except KeyError as e:
                 search = []
             if search:
                 for term in search:
-                    site_term = site+":"+term
+                    site_term = site + ":" + term
                     scrape[site_term] = Process(site_class, dl_path, term, num_files, threads)
             else:
                 scrape[site] = Process(site_class, dl_path, '', num_files, threads)
