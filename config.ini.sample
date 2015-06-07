@@ -133,7 +133,7 @@ threads = 1
 enabled = false
 ; Location to download the files (trailing slash is optional)
 download_path = ~/Downloads/how-stuff-works/
-; This site has pages, keep this at 1
+; Number of pages
 number_of_files = 1
-; Only ever use one thread here, the downloads are threaded internally
+; Number of threads the parser should use
 threads = 1
