@@ -188,31 +188,35 @@ class HowStuffWorks(Scraper):
 
             links = page_soup.find_all("a")
             if len(links) > 0:
-                for link in links:
+                for idx, link in enumerate(links):
                     if re.match('.*howstuffworks\.com.*', link['href']):
                         abs_path, full_path = self.get_save_path(link['href'])
                         new_link = abs_path
                     else:
                         link_name = link.get_text().replace(' ', '_')
-                        pdf_path = article['abs_path'] + "assets/" + link_name + ".pdf"
+                        pdf_path = article['abs_path'] + "assets/link-" + idx + ".pdf"
                         new_link = pdf_path
 
                         # Create pdf of external page
                         pdf_file = self._base_dir + pdf_path
                         if not os.path.isfile(pdf_file):
-                            self.cprint("Creating pdf of: " + link_name, log=True)
-                            try:
-                                pdfkit.from_url(link['href'], pdf_file, options=pdfkit_options)
-                            except IOError as e:
-                                self.log("pdfkit IOError: [" + link_name + "] " + str(e), level='warning')
-                            except Exception as e:
-                                self.log("pdfkit Exception: [" + link_name + "] " + str(e), level='warning')
+                            self.cprint("Creating pdf...", log=True)
+                            if link['href'].split('/')[-1].split('.')[-1] == 'pdf':
+                                # If it is linking to a pdf, then just download it
+                                if not self.download(link['href'], pdf_file, self._url_header):
+                                    self.log("pdf download failed: " + link_name , level='warning')
                             else:
-                                # If successful
-                                # Convert to web safe path
-                                abs_path = urllib.request.pathname2url(new_link)
-                                # Replace link with link to article or a pdf
-                                article['content'][idx_page]['page_content'] = article['content'][idx_page]['page_content'].replace(link['href'], new_link)
+                                try:
+                                    pdfkit.from_url(link['href'], pdf_file, options=pdfkit_options)
+                                except IOError as e:
+                                    self.log("pdfkit IOError: [" + link_name + "] " + str(e), level='warning')
+                                except Exception as e:
+                                    self.log("pdfkit Exception: [" + link_name + "] " + str(e), level='warning')
+
+                    # Convert to web safe path
+                    abs_path = urllib.request.pathname2url(new_link)
+                    # Replace link with link to article or a pdf
+                    article['content'][idx_page]['page_content'] = article['content'][idx_page]['page_content'].replace(link['href'], new_link)
 
         return article
 
