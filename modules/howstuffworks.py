@@ -157,7 +157,13 @@ class HowStuffWorks(Scraper):
             images = page_soup.find_all("img")
             if len(images) > 0:
                 for image in images:
-                    abs_src = self.download_image(article, image['src'])
+                    base_img_url = "http://s.hswstatic.com/"
+
+                    img_dl_link = image['src']
+                    if not image['src'].startswith(base_img_url):
+                        img_dl_link = base_img_url + image['src']
+
+                    abs_src = self.download_image(article, img_dl_link)
                     # Replace the src of downloaded image
                     article['content'][idx_page]['page_content'] = article['content'][idx_page]['page_content'].replace(image['src'], abs_src)
 
