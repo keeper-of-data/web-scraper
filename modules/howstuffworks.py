@@ -199,7 +199,7 @@ class HowStuffWorks(Scraper):
                         # Create pdf of external page
                         pdf_file = self._base_dir + pdf_path
                         if not os.path.isfile(pdf_file):
-                            self.cprint("Creating pdf of: " + link['href'], log=True)
+                            self.cprint("Creating pdf of: " + link['href'].split('/')[-1], log=True)
                             try:
                                 pdfkit.from_url(link['href'], pdf_file, options=pdfkit_options)
                             except IOError as e:
