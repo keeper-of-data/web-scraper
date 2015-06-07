@@ -193,19 +193,20 @@ class HowStuffWorks(Scraper):
                         abs_path, full_path = self.get_save_path(link['href'])
                         new_link = abs_path
                     else:
-                        pdf_path = article['abs_path'] + "assets/" + link.get_text().replace(' ', '_') + ".pdf"
+                        link_name = link.get_text().replace(' ', '_')
+                        pdf_path = article['abs_path'] + "assets/" + link_name + ".pdf"
                         new_link = pdf_path
 
                         # Create pdf of external page
                         pdf_file = self._base_dir + pdf_path
                         if not os.path.isfile(pdf_file):
-                            self.cprint("Creating pdf of: " + link['href'].split('/')[-1], log=True)
+                            self.cprint("Creating pdf of: " + link_name, log=True)
                             try:
                                 pdfkit.from_url(link['href'], pdf_file, options=pdfkit_options)
                             except IOError as e:
-                                self.log("pdfkit IOError: " + str(e), level='warning')
+                                self.log("pdfkit IOError: [" + link_name + "] " + str(e), level='warning')
                             except Exception as e:
-                                self.log("pdfkit Exception: " + str(e), level='warning')
+                                self.log("pdfkit Exception: [" + link_name + "] " + str(e), level='warning')
                             else:
                                 # If successful
                                 # Convert to web safe path
@@ -304,11 +305,8 @@ class HowStuffWorks(Scraper):
             header_soup = page_soup.find("div", {"id": "content-header"})
             article['title'] = header_soup.find("h1").get_text().strip()
 
-            # I need to have a ['id'], if there are non-ascii chars in title, just use the end of the url
-            if len(article['title']) > 1 and type(article['title']) is not 'unicode':
-                article['id'] = article['title']
-            else:
-                url.split('/')[-1]
+            # I need to have a ['id'], just use the end of the url
+            article['id'] = url.split('/')[-1]
 
             try:
                 author = header_soup.find("span", {"class": "content-author"}).a.get_text()
