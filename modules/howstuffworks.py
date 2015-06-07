@@ -1,7 +1,9 @@
 from utils.exceptions import *
 from utils.scraper import Scraper
 from bs4 import BeautifulSoup
+import urllib.request
 import os
+import re
 import math
 import pdfkit
 
@@ -36,79 +38,90 @@ class HowStuffWorks(Scraper):
 
     def get_latest(self):
         """
-        Will always be 0 because we the parent loop to only run once
-        All processing is done below in parse()
+        If number of lines in self._completed_articles_csv is less then total articles - 500
+            then run through all pages, other wise return 1
         :return: id of the newest item
         """
         self.cprint("##\tGetting newest upload id...\n", log=True)
-        return 0
+        articles_per_page = 500
+
+        # Get number of lines in articles.csv
+        downloaded_articles = 0
+        with open(self._completed_articles_csv) as f:
+            for i, l in enumerate(f):
+                downloaded_articles += 1
+
+        url = "http://www.howstuffworks.com/big.htm?page=1"
+        try:
+            soup = self.get_site(url, self._url_header)
+        except RequestsError as e:
+            return 1
+        num_articles = int(soup.find("div", {"class": "content"}).h3.get_text().split(' ')[-1].replace(',', ''))
+        # Check if we need to scan more then the first page
+        if abs(downloaded_articles - num_articles) <= 500:
+            num_pages = 1
+        else:
+            num_pages = math.ceil(num_articles / articles_per_page)
+
+        self.cprint("##\tGo to page: " + str(num_pages) + "\n", log=True)
+        return num_pages
 
     def parse(self, id_):
         """
         Using BeautifulSoup, parse the page for links then will dig into found links
-        :param id_: id of the first page (always 1 in this case)
+        :param id_: id of the page to parse
         :return:
         """
-        # Get number of pages to loop through
-        url = "http://www.howstuffworks.com/big.htm?page=1"
+        # There is no 0 page
+        if id_ == 0:
+            return
+        self.cprint("Processing links page: " + str(id_), log=True)
+        url = "http://www.howstuffworks.com/big.htm?page=" + str(id_)
         # get the html from the url
         try:
             soup = self.get_site(url, self._url_header)
         except RequestsError as e:
             return
 
-        num_pages = int(soup.find("div", {"class": "content"}).h3.get_text().split(' ')[-1].replace(',', ''))
-        num_pages = math.ceil(num_pages/500)  # There are 500 results per page
+        links = soup.find("ol").find_all("li")
+        # Loop through each link on the page
+        for link in links:
+            url = link.a["href"]
 
-        # Now loop through each page to start parsing the links
-        for i in range(1, num_pages + 1):
-            self.cprint("Processing link page: " + str(i), log=True)
-            url = "http://www.howstuffworks.com/big.htm?page=" + str(i)
-            # get the html from the url
-            try:
-                soup = self.get_site(url, self._url_header)
-            except RequestsError as e:
-                return
+            # Check if url is a quiz (we do not want these, they are interactive flash objects)
+            if str(url).endswith('quiz.htm'):
+                continue
 
-            links = soup.find("ol").find_all("li")
-            # Loop through each link on the page
-            for link in links:
-                url = link.a["href"]
+            # Check if we already have this article
+            if str(url) in self._completed_urls or str(url) in self._failed_urls:
+                continue
 
-                # Check if url is a quiz (we do not want these, they are interactive flash objects)
-                if str(url).endswith('quiz.htm'):
-                    continue
+            self.cprint("Processing: " + url.split('/')[-1], log=True)
 
-                # Check if we already have this article
-                if str(url) in self._completed_urls or str(url) in self._failed_urls:
-                    continue
+            whole_article = self.parse_article(url)
+            # Something went wrong, so skip it
+            if whole_article is False:
+                self.log("Something Failed: " + url)
+                self.add_failed(url)
+                continue
 
-                self.cprint("Processing: " + url.split('/')[-1], log=True)
+            self.cprint("Saving assets: " + whole_article['id'], log=True)
+            # Download/save images
+            whole_article = self.save_article_images(whole_article)
 
-                whole_article = self.parse_article(url)
-                # Something went wrong, so skip it
-                if whole_article is False:
-                    self.log("Something Failed: " + url)
-                    self.add_failed(url)
-                    continue
+            # Parse page content for links to make local
+            #   - External links will be saved in pdf form
+            #   - How Stuff Works links will be changed into a local path to the article
+            whole_article = self.process_content_links(whole_article)
 
-                self.cprint("Saving assets: " + whole_article['id'], log=True)
-                # Download/save images
-                whole_article = self.save_article_images(whole_article)
+            # Save json data in case we need to rebuild the article
+            self.save_props(whole_article)
 
-                # Parse page content for links to make local
-                #   - External links will be saved in pdf form
-                #   - How Stuff Works links will be changed into a local path to the article
-                whole_article = self.process_content_links(whole_article)
+            # Create html file from article
+            self.html_template(whole_article)
 
-                # Save json data in case we need to rebuild the article
-                self.save_props(whole_article)
-
-                # Create html file from article
-                self.html_template(whole_article)
-
-                # Add article to completed list
-                self.add_completed(url, whole_article['abs_path'], whole_article['title'])
+            # Add article to completed list
+            self.add_completed(url, whole_article['abs_path'], whole_article['title'])
 
         # Everything was successful
         return True
@@ -162,35 +175,43 @@ class HowStuffWorks(Scraper):
                     img_dl_link = image['src']
                     if not image['src'].startswith(base_img_url):
                         img_dl_link = base_img_url + image['src']
-
+                    self.cprint("Saving Image: " + image['src'], log=True)
                     abs_src = self.download_image(article, img_dl_link)
                     # Replace the src of downloaded image
                     article['content'][idx_page]['page_content'] = article['content'][idx_page]['page_content'].replace(image['src'], abs_src)
 
             # Replace HSW links with local path to file, create pdf of external sites and link locally
             # TODO: catch pdfkit errors/timeouts and try a few times before giving up
-            # links = page_soup.find_all("a")
-            # if len(links) > 0:
-            #     for link in links:
-            #         if re.match('.*howstuffworks\.com.*', link['href']):
-            #             abs_path, full_path = self.get_save_path(link['href'])
-            #             new_link = abs_path
-            #         else:
-            #             pdf_path = article['abs_path'] + "assets/" + link.get_text().replace(' ', '_') + ".pdf"
-            #             new_link = pdf_path
-            #             # Create pdf of external page
-            #             try:
-            #                 pdf_file = self._base_dir + pdf_path
-            #                 if not os.path.isfile(pdf_file):
-            #                     pdfkit.from_url(link['href'], pdf_file)
-            #             except Exception as e:
-            #                 # If it did not work, put the link back
-            #                 new_link = link['href']
+            pdfkit_options = {
+                                'quiet': ''
+                                }
 
-            #         # Convert to web safe path
-            #         abs_path = urllib.request.pathname2url(new_link)
-            #         # Replace link with link to article or a pdf
-            #         article['content'][idx_page]['page_content'] = article['content'][idx_page]['page_content'].replace(link['href'], new_link)
+            links = page_soup.find_all("a")
+            if len(links) > 0:
+                for link in links:
+                    if re.match('.*howstuffworks\.com.*', link['href']):
+                        abs_path, full_path = self.get_save_path(link['href'])
+                        new_link = abs_path
+                    else:
+                        pdf_path = article['abs_path'] + "assets/" + link.get_text().replace(' ', '_') + ".pdf"
+                        new_link = pdf_path
+
+                        # Create pdf of external page
+                        pdf_file = self._base_dir + pdf_path
+                        if not os.path.isfile(pdf_file):
+                            self.cprint("Creating pdf of: " + link['href'], log=True)
+                            try:
+                                pdfkit.from_url(link['href'], pdf_file, options=pdfkit_options)
+                            except IOError as e:
+                                self.log("pdfkit IOError: " + str(e), level='warning')
+                            except Exception as e:
+                                self.log("pdfkit Exception: " + str(e), level='warning')
+                            else:
+                                # If successful
+                                # Convert to web safe path
+                                abs_path = urllib.request.pathname2url(new_link)
+                                # Replace link with link to article or a pdf
+                                article['content'][idx_page]['page_content'] = article['content'][idx_page]['page_content'].replace(link['href'], new_link)
 
         return article
 
@@ -282,8 +303,13 @@ class HowStuffWorks(Scraper):
             # Get title & author
             header_soup = page_soup.find("div", {"id": "content-header"})
             article['title'] = header_soup.find("h1").get_text().strip()
-            # I need to have a ['id']
-            article['id'] = article['title'] if len(article['title']) > 1 else url.split('/')[-1]
+
+            # I need to have a ['id'], if there are non-ascii chars in title, just use the end of the url
+            if len(article['title']) > 1 and type(article['title']) is not 'unicode':
+                article['id'] = article['title']
+            else:
+                url.split('/')[-1]
+
             try:
                 author = header_soup.find("span", {"class": "content-author"}).a.get_text()
                 article['author'] = " ".join(author.split())
