@@ -1,5 +1,6 @@
 import logging
 
+
 def setup_custom_logger(name, log_file):
 
     # Create logger
@@ -10,7 +11,7 @@ def setup_custom_logger(name, log_file):
     fh.setLevel(logging.DEBUG)
     # Create console handler with a higher log level
     ch = logging.StreamHandler()
-    ch.setLevel(logging.ERROR)
+    ch.setLevel(logging.CRITICAL)
     # Create formatter and add it to the handlers
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(module)s - %(message)s')
     fh.setFormatter(formatter)
@@ -19,14 +20,4 @@ def setup_custom_logger(name, log_file):
     logger.addHandler(fh)
     logger.addHandler(ch)
 
-
-
-    # formatter = logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(module)s - %(message)s')
-
-    # handler = logging.StreamHandler()
-    # handler.setFormatter(formatter)
-
-    # logger = logging.getLogger(name)
-    # logger.setLevel(logging.DEBUG)
-    # logger.addHandler(handler)
     return logger

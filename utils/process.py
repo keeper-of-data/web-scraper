@@ -2,6 +2,7 @@ import os
 import queue
 import logging
 import threading
+import traceback
 from utils.scraper import Scraper
 
 
@@ -66,7 +67,7 @@ class Process(Scraper):
             try:
                 self.site.parse(num)
             except Exception as e:
-                self.log("self.site.parse: " + str(e), level='warning')
+                self.log("self.site.parse: " + str(e) + str(traceback.format_exc()), level='critical')
             # Having self._last_id here, it may reparse the same thing on next run
             #   because the last item processed may not have been the last item in the list because it is async
             self._last_id = num

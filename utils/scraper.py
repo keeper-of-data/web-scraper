@@ -3,6 +3,7 @@ import json
 import hashlib
 import logging
 import requests
+import traceback
 from bs4 import BeautifulSoup
 from datetime import datetime
 from utils.exceptions import *
@@ -37,7 +38,10 @@ class Scraper:
             self.log("Error [download]: " + str(e.response.status_code) + " " + url)
         except requests.exceptions.ConnectionError as e:
             return_value = False
-            self.cprint("\nException [download]: " + str(e) + " " + url + "\n", log=True)
+            self.log("ConnectionError [download]: " + str(e) + " " + url, level='error')
+        except requests.exceptions.InvalidSchema as e:
+            return_value = False
+            self.log("InvalidSchema [download]: " + str(e) + " " + url, level='error')
 
         return return_value
 
@@ -66,6 +70,8 @@ class Scraper:
         """
         Try and return soup or json content, if not throw a RequestsError
         """
+        if not url.startswith('http'):
+            url = "http://" + url
         try:
             response = requests.get(url, headers=header)
             if response.status_code == requests.codes.ok:
@@ -78,11 +84,18 @@ class Scraper:
                 
             response.raise_for_status()
         except requests.exceptions.HTTPError as e:
-            self.log("HTTPError [get_site]: " + str(e.response.status_code) + " " + url)
+            self.log("HTTPError [get_site]: " + str(e.response.status_code) + " " + url, level='error')
             raise RequestsError(str(e))
         except requests.exceptions.ConnectionError as e:
-            self.log("ConnectionError [get_site]: " + str(e) + " " + url)
+            self.log("ConnectionError [get_site]: " + str(e) + " " + url, level='error')
             raise RequestsError(str(e))
+        except requests.exceptions.TooManyRedirects as e:
+            self.log("TooManyRedirects [get_site]: " + str(e) + " " + url, level='error')
+            raise RequestsError(str(e))
+        except Exception as e:
+            self.log("Exception [get_site]: " + str(e) + " " + url + "\n" + str(traceback.format_exc()), level='critical')
+            raise RequestsError(str(e))
+
 
     def cprint(self, cstr, log=False):
         """

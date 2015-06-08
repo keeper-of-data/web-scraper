@@ -81,6 +81,7 @@ class HowStuffWorks(Scraper):
         try:
             soup = self.get_site(url, self._url_header)
         except RequestsError as e:
+            self.log("Failed to get html of links page: " + str(id_), level='warning')
             return
 
         links = soup.find("ol").find_all("li")
@@ -128,8 +129,12 @@ class HowStuffWorks(Scraper):
 
     def add_completed(self, url, article_path, title):
         self._completed_urls.append(url)
-        with open(self._completed_articles_csv, 'a') as f:
-            f.write(url + "," + article_path + "," + title + "\n")
+        try:
+            with open(self._completed_articles_csv, 'a') as f:
+                f.write(url + "," + article_path + "," + title + "\n")
+        except UnicodeEncodeError:
+            with open(self._completed_articles_csv, 'a') as f:
+                f.write(url + "," + article_path + ",[UnicodeEncodeError]\n")
 
     def add_failed(self, url):
         self._completed_urls.append(url)
@@ -181,37 +186,48 @@ class HowStuffWorks(Scraper):
                     article['content'][idx_page]['page_content'] = article['content'][idx_page]['page_content'].replace(image['src'], abs_src)
 
             # Replace HSW links with local path to file, create pdf of external sites and link locally
-            # TODO: catch pdfkit errors/timeouts and try a few times before giving up
+            # Options: http://wkhtmltopdf.org/usage/wkhtmltopdf.txt
             pdfkit_options = {
-                                'quiet': ''
+                                'quiet': '',
+                                'no-background': '',
+                                'disable-javascript': ''
                                 }
 
             links = page_soup.find_all("a")
             if len(links) > 0:
+                # Should remove duplicate links so we do not have to process the same thing twice
+                links = set(links)
                 for idx, link in enumerate(links):
                     if re.match('.*howstuffworks\.com.*', link['href']):
-                        abs_path, full_path = self.get_save_path(link['href'])
+                        try:
+                            abs_path, full_path = self.get_save_path(link['href'])
+                        except CrumbsError as e:
+                            self.log("external link CrumbError: " + str(e) + " in url " + link['href'], level='warning')
+                            continue
                         new_link = abs_path
                     else:
                         link_name = link.get_text().replace(' ', '_')
-                        pdf_path = article['abs_path'] + "assets/link-" + idx + ".pdf"
+                        pdf_path = os.path.join(article['abs_path'], "assets", "link-" + str(idx) + ".pdf")
                         new_link = pdf_path
 
                         # Create pdf of external page
                         pdf_file = self._base_dir + pdf_path
                         if not os.path.isfile(pdf_file):
-                            self.cprint("Creating pdf...", log=True)
-                            if link['href'].split('/')[-1].split('.')[-1] == 'pdf':
+                            if link['href'].endswith('pdf'):
+                                self.cprint("Downloading pdf: " + pdf_path, log=True)
                                 # If it is linking to a pdf, then just download it
                                 if not self.download(link['href'], pdf_file, self._url_header):
                                     self.log("pdf download failed: " + link_name , level='warning')
                             else:
+                                self.cprint("Creating pdf: " + pdf_path, log=True)
                                 try:
                                     pdfkit.from_url(link['href'], pdf_file, options=pdfkit_options)
                                 except IOError as e:
                                     self.log("pdfkit IOError: [" + link_name + "] " + str(e), level='warning')
+                                    continue
                                 except Exception as e:
                                     self.log("pdfkit Exception: [" + link_name + "] " + str(e), level='warning')
+                                    continue
 
                     # Convert to web safe path
                     abs_path = urllib.request.pathname2url(new_link)
@@ -260,13 +276,16 @@ class HowStuffWorks(Scraper):
             try:
                 page_soup = self.get_site(url, self._url_header)
             except RequestsError as e:
-                return
+                raise CrumbsError("Cannot get_site")
         else:
             return []
 
         crumbs = []
-        for crumb in page_soup.find("div", {"class": "breadcrumb"}).find_all("a"):
-            crumbs.append(crumb.get_text().strip())
+        try:
+            for crumb in page_soup.find("div", {"class": "breadcrumb"}).find_all("a"):
+                crumbs.append(crumb.get_text().strip())
+        except AttributeError:
+            raise CrumbsError("No bread crumbs found")
 
         return crumbs
 
@@ -279,7 +298,8 @@ class HowStuffWorks(Scraper):
         try:
             page_soup = self.get_site(url, self._url_header)
         except RequestsError as e:
-            return
+            self.log("Failed to get html of article: " + str(url), level='warning')
+            return False
 
         # Get links for each page in the article
         links = []
@@ -299,8 +319,14 @@ class HowStuffWorks(Scraper):
         try:
             article = {}
 
-            # Get bread crumbs
-            article['bread_crumbs'] = self.get_crumbs(soup=page_soup)
+            article['url'] = url
+
+            try:
+                # Get bread crumbs
+                article['bread_crumbs'] = self.get_crumbs(soup=page_soup)
+            except CrumbsError as e:
+                self.log("CrumbError: " + str(e) + " in url " + url, level='warning')
+                return False
 
             # Get save path
             article['abs_path'], article['save_path'] = self.get_save_path(url, article['bread_crumbs'])
@@ -326,6 +352,7 @@ class HowStuffWorks(Scraper):
                     try:
                         page_soup = self.get_site(url, self._url_header)
                     except RequestsError as e:
+                        self.log("Failed to get html of article page: " + str(idx+1) + " of " + str(url), level='warning')
                         continue
                     header_soup = page_soup.find("div", {"id": "content-header"})
 
