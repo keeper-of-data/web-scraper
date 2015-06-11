@@ -99,7 +99,11 @@ class HowStuffWorks(Scraper):
 
             self.cprint("Processing: " + url.split('/')[-1], log=True)
 
-            whole_article = self.parse_article(url)
+            if url.split('//')[1].startswith('recipes.'):
+                # Recipes do not have a mobile format, so the html is different
+                whole_article = self.parse_article_recipe(url)
+            else:
+                whole_article = self.parse_article(url)
             # Something went wrong, so skip it
             if whole_article is False:
                 self.log("Something Failed: " + url)
@@ -198,6 +202,9 @@ class HowStuffWorks(Scraper):
                 # Should remove duplicate links so we do not have to process the same thing twice
                 links = set(links)
                 for idx, link in enumerate(links):
+                    if 'href' not in link:
+                        continue
+
                     if re.match('.*howstuffworks\.com.*', link['href']):
                         try:
                             abs_path, full_path = self.get_save_path(link['href'])
@@ -298,7 +305,7 @@ class HowStuffWorks(Scraper):
         try:
             page_soup = self.get_site(url, self._url_header)
         except RequestsError as e:
-            self.log("Failed to get html of article: " + str(url), level='warning')
+            self.log("Failed to get soup of article: " + str(url), level='warning')
             return False
 
         # Get links for each page in the article
@@ -388,6 +395,70 @@ class HowStuffWorks(Scraper):
                     content = self.rreplace(content, '</div>', '', 1)
                     page_content['page_content'] = content.strip()
                 article['content'].insert(idx, page_content)
+        except Exception as e:
+            # Something went wrong scraping the page
+            self.log("Exception [" + url + "]: " + str(e))
+            return False
+
+        return article
+
+    def parse_article_recipe(self, url):
+        """
+        Using BeautifulSoup, parse the article for recipe data
+        :param url: url of the article
+        :return:
+        """
+        try:
+            page_soup = self.get_site(url, self._url_header)
+        except RequestsError as e:
+            self.log("Failed to get soup of article: " + str(url), level='warning')
+            return False
+
+        try:
+            article = {}
+
+            article['url'] = url
+
+            try:
+                # Get bread crumbs
+                crumbs = page_soup.find("div", {"class": "BreadCrumb"}).find_all("li")
+                # Only want the first 2 crumbs (excluding "Home")
+                #   Reason: The mobile articles only have 2 crumbs
+                article['bread_crumbs'] = [crumbs[1].get_text().strip(),
+                                           crumbs[2].get_text().strip()]
+            except CrumbsError as e:
+                self.log("CrumbError: " + str(e) + " in url " + url, level='warning')
+                return False
+
+            # Get save path
+            article['abs_path'], article['save_path'] = self.get_save_path(url, article['bread_crumbs'])
+
+            # Get title & author
+            header_soup = page_soup.find("div", {"id": "title"})
+            article['title'] = page_soup.find("h1", {"class": "articleTitle"}).get_text().strip()
+
+            # I need to have a ['id'], just use the end of the url
+            article['id'] = url.split('/')[-1]
+
+            try:
+                article['author'] = page_soup.find("p", {"class": "articleByLine"}).a.get_text()
+            except AttributeError:
+                article['author'] = ''
+
+            article['content'] = []  # List of content on each page
+
+            self.cprint("Processing recipe page - " + article['title'])
+
+            # Parse current page
+            page_content = {}
+
+            page_content['title'] = ''
+
+            content = str(page_soup.find("div", {"id": "RecipeWell"}))
+            page_content['page_content'] = content.strip()
+
+            # Add page to article content
+            article['content'].insert(0, page_content)
         except Exception as e:
             # Something went wrong scraping the page
             self.log("Exception [" + url + "]: " + str(e))

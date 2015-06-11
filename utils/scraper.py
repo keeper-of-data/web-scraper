@@ -42,6 +42,12 @@ class Scraper:
         except requests.exceptions.InvalidSchema as e:
             return_value = False
             self.log("InvalidSchema [download]: " + str(e) + " " + url, level='error')
+        except requests.exceptions.TooManyRedirects as e:
+            return_value = False
+            self.log("TooManyRedirects [download]: " + str(e) + " " + url, level='error')
+        except requests.exceptions.MissingSchema as e:
+            return_value = False
+            self.log("MissingSchema [download]: " + str(e) + " " + url, level='error')
 
         return return_value
 
@@ -95,7 +101,6 @@ class Scraper:
         except Exception as e:
             self.log("Exception [get_site]: " + str(e) + " " + url + "\n" + str(traceback.format_exc()), level='critical')
             raise RequestsError(str(e))
-
 
     def cprint(self, cstr, log=False):
         """
