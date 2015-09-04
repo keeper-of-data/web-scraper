@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 import urllib.request
 import os
 import re
+import json
 import math
 import pdfkit
 
@@ -154,6 +155,7 @@ class HowStuffWorks(Scraper):
         for idx, page in enumerate(article['content']):
             if 'image_orig' in page:
                 article['content'][idx]['image_abs'] = self.download_image(article, page['image_orig'])
+                article['content'][idx]['image_rel'] = "./assets/" + article['content'][idx]['image_abs'].split("/assets/")[-1]
 
         return article
 
@@ -481,7 +483,7 @@ class HowStuffWorks(Scraper):
             html += '<div class="page-title">' + page['title'] + '</div>'
             if 'image_abs' in page:
                 html += '<div class="main-image">'
-                html += '<img src="' + page['image_abs'] + '" />'
+                html += '<img src="' + page['image_rel'] + '" />'
                 html += '<div class="caption">' + page['image_caption'] + '</div>'
                 html += '<div class="credit">' + page['image_credit'] + '</div>'
                 html += '</div>'
@@ -494,6 +496,8 @@ class HowStuffWorks(Scraper):
         try:
             with open(article['save_path'] + "index.html", 'w') as f:
                 f.write(html)
+            with open(article['save_path'] + "index.json", 'w') as f:
+                json.dump(article, f)
         except UnicodeEncodeError:
             self.log("UnicodeEncodeError: " + article['save_path'])
             with open(article['save_path'] + "index.html", 'w') as f:
