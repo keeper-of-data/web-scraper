@@ -421,13 +421,13 @@ class HowStuffWorks(Scraper):
 
             try:
                 # Get bread crumbs
-                crumbs = page_soup.find("div", {"class": "BreadCrumb"}).find_all("li")
+                crumbs = page_soup.find("div", {"id": "BreadCrumb"}).find_all("li")
                 # Only want the first 2 crumbs (excluding "Home")
                 #   Reason: The mobile articles only have 2 crumbs
                 article['bread_crumbs'] = [crumbs[1].get_text().strip(),
                                            crumbs[2].get_text().strip()]
-            except CrumbsError as e:
-                self.log("CrumbError: " + str(e) + " in url " + url, level='warning')
+            except AttributeError as e:
+                self.log("CrumbError: " + str(e) + " in url " + url, level='error')
                 return False
 
             # Get save path
