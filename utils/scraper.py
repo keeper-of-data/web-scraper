@@ -1,5 +1,6 @@
 import os
 import json
+import urllib
 import hashlib
 import logging
 import requests
@@ -25,29 +26,22 @@ class Scraper:
     def download(self, url, file_path, header={}):
         self.log("Starting download: " + url)
         self.create_dir(file_path)
+
         try:
-            response = requests.get(url, headers=header, stream=True)
-            if response.status_code == 200:
-                with open(file_path, 'wb') as f:
-                    for chunk in response.iter_content():
-                        f.write(chunk)
-                return_value = True
-            response.raise_for_status()
-        except requests.exceptions.HTTPError as e:
+            with urllib.request.urlopen(
+              urllib.request.Request(url, headers=header)) as response, \
+                open(file_path, 'wb') as out_file:
+                    data = response.read()
+                    out_file.write(data)
+
+            return_value = file_path
+
+        except urllib.error.HTTPError as e:
             return_value = False
-            self.log("Error [download]: " + str(e.response.status_code) + " " + url)
-        except requests.exceptions.ConnectionError as e:
+            self.log("Error [download]: " + str(e.code) + " " + url, level='error')
+        except Exception as e:
             return_value = False
-            self.log("ConnectionError [download]: " + str(e) + " " + url, level='error')
-        except requests.exceptions.InvalidSchema as e:
-            return_value = False
-            self.log("InvalidSchema [download]: " + str(e) + " " + url, level='error')
-        except requests.exceptions.TooManyRedirects as e:
-            return_value = False
-            self.log("TooManyRedirects [download]: " + str(e) + " " + url, level='error')
-        except requests.exceptions.MissingSchema as e:
-            return_value = False
-            self.log("MissingSchema [download]: " + str(e) + " " + url, level='error')
+            self.log("Exception [download]: " + str(e) + " " + url, level='error')
 
         return return_value
 
