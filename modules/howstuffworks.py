@@ -496,8 +496,6 @@ class HowStuffWorks(Scraper):
         try:
             with open(article['save_path'] + "index.html", 'w') as f:
                 f.write(html)
-            with open(article['save_path'] + "index.json", 'w') as f:
-                json.dump(article, f)
         except UnicodeEncodeError:
             self.log("UnicodeEncodeError: " + article['save_path'])
             with open(article['save_path'] + "index.html", 'w') as f:
