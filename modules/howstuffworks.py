@@ -174,7 +174,7 @@ class HowStuffWorks(Scraper):
         :return: update article dict
         """
         for idx_page, page in enumerate(article['content']):
-            page_soup = BeautifulSoup(page['page_content'])
+            page_soup = BeautifulSoup(page['page_content'], "html5lib")
             # Download images and replace src to local file
             images = page_soup.find_all("img")
             if len(images) > 0:

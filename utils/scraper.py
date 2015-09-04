@@ -84,7 +84,7 @@ class Scraper:
                 if is_json:
                     data = response.json()
                 else:
-                    data = BeautifulSoup(response.text)
+                    data = BeautifulSoup(response.text, "html5lib")
 
                 return data 
                 
