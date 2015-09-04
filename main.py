@@ -57,6 +57,7 @@ if __name__ == "__main__":
             except Exception as e:
                 pass
             num_files = int(config[site]['number_of_files'])
+            progress_file = config[site]['progress_file'].lower()
             threads = int(config[site]['threads'])
             log_file = os.path.join(dl_path, site + '.log')
             logger = setup_custom_logger('root', log_file)
@@ -67,9 +68,9 @@ if __name__ == "__main__":
             if search:
                 for term in search:
                     site_term = site + ":" + term
-                    scrape[site_term] = Process(site_class, dl_path, term, num_files, threads)
+                    scrape[site_term] = Process(site_class, dl_path, progress_file, term, num_files, threads)
             else:
-                scrape[site] = Process(site_class, dl_path, '', num_files, threads)
+                scrape[site] = Process(site_class, dl_path, progress_file, '', num_files, threads)
 
     # Start site parser
     try:

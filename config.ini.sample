@@ -16,6 +16,8 @@ download_path = ~/Downloads/alpha-wallhaven/
 number_of_files = 5
 ; Number of threads the parser should use
 threads = 1
+; Do not change progress_file value
+progress_file = true
 
 ; http://hubblesite.org/gallery/album/entire/npp/all/
 [hubble]
@@ -27,6 +29,8 @@ download_path = ~/Downloads/hubble/
 number_of_files = 1
 ; Only ever use one thread here, the downloads are threaded internally
 threads = 1
+; Do not change progress_file value
+progress_file = true
 
 
 ;;;;;;;;;;
@@ -43,6 +47,8 @@ download_path = ~/Downloads/it-ebooks/
 number_of_files = 5
 ; Number of threads the parser should use
 threads = 1
+; Do not change progress_file value
+progress_file = true
 
 ; http://tuebl.ca/
 [tuebl]
@@ -54,6 +60,8 @@ download_path = ~/Downloads/tuebl/
 number_of_files = 5
 ; Number of threads the parser should use
 threads = 1
+; Do not change progress_file value
+progress_file = true
 
 
 ;;;;;;;;
@@ -72,6 +80,8 @@ download_path = ~/Downloads/icoinfinder/
 number_of_files = 5
 ; Only ever use one thread here, the downloads are threaded internally
 threads = 1
+; Do not change progress_file value
+progress_file = true
 
 ; http://findicons.com/
 [findicons]
@@ -83,6 +93,8 @@ download_path = ~/Downloads/findicons/
 number_of_files = 5
 ; Only ever use one thread here, the downloads are threaded internally
 threads = 1
+; Do not change progress_file value
+progress_file = true
 
 
 ;;;;;;;;;;;;;
@@ -99,6 +111,8 @@ download_path = ~/Downloads/xkcd/
 number_of_files = 5
 ; Number of threads the parser should use
 threads = 1
+; Do not change progress_file value
+progress_file = true
 
 ; http://what-if.xkcd.com/
 [whatif]
@@ -110,6 +124,8 @@ download_path = ~/Downloads/xkcd-whatif/
 number_of_files = 5
 ; Number of threads the parser should use
 threads = 1
+; Do not change progress_file value
+progress_file = true
 
 ; http://questionablecontent.com/
 [questionablecontent]
@@ -121,6 +137,8 @@ download_path = ~/Downloads/questionablecontent/
 number_of_files = 5
 ; Number of threads the parser should use
 threads = 1
+; Do not change progress_file value
+progress_file = true
 
 
 ;;;;;;;;;;;
@@ -137,3 +155,5 @@ download_path = ~/Downloads/how-stuff-works/
 number_of_files = 1
 ; Number of threads the parser should use
 threads = 1
+; Do not change progress_file value
+progress_file = false

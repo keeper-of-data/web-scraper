@@ -8,11 +8,12 @@ from utils.scraper import Scraper
 
 class Process(Scraper):
 
-    def __init__(self, site, base_dir, search_term, parse_count=10, threads=1):
+    def __init__(self, site, base_dir, progress_file, search_term, parse_count=10, threads=1):
         self._search_term = search_term
         self._base_dir = base_dir
         self._progress_file = os.path.join(self._base_dir, "progress" + self._search_term)
         self.log_file = os.path.join(self._base_dir, "logs" + self._search_term)
+        self.progress_file = progress_file
         self._url_header = {'User-Agent': 'Mozilla/4.0 (compatible; MSIE 5.5; Windows NT)'}
         self._last_id = 0
         self._max_id = 0
@@ -79,7 +80,8 @@ class Process(Scraper):
         :return:
         """
         print("\n")  # Since we are using `\r` above, we need to enter down when exiting the script
-        self.save_progress(self._progress_file, self._last_id)
+        if self.progress_file != 'false':
+            self.save_progress(self._progress_file, self._last_id)
 
     def stop(self):
         # not sure what is the last thread to run since it is async, so reparse all current threads on next start
