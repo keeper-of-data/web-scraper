@@ -472,11 +472,11 @@ class HowStuffWorks(Scraper):
         """
         """
         html = '<html><head><title>' + article['title'] + '</title>'
-        html += '<link rel="stylesheet" type="text/css" href="/assets/style.css"></head>'
+        html += '<link rel="stylesheet" type="text/css" href="./../../../../assets/style.css"></head>'
         html += '<body>'
         html += '<div id="bread_crumbs">' + ' | '.join(article['bread_crumbs']) + '</div>'
-        html += '<div id="title"' + article['title'] + '</div>'
-        html += '<div id="author"' + article['author'] + '</div>'
+        html += '<div id="title">' + article['title'] + '</div>'
+        html += '<div id="author">' + article['author'] + '</div>'
         html += '<div id="content">'
         for idx, page in enumerate(article['content']):
             html += '<div id="page-' + str(idx) + '">'
