@@ -3,10 +3,13 @@
 Python web scraper to archive various sites  
 Developed using Python 3.4
 
-## Dependencies
+## Python Dependencies
 - BeautifulSoup4
 - pdfkit
-- requests
+- requests  
+
+## System Dependencies
+- wkhtmltopdf ([downloads](http://wkhtmltopdf.org/downloads.html))
 
 ## Usage
 - **Config:** Rename config.ini.sample to config.ini and edit to your needs
