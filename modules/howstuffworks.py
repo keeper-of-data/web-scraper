@@ -155,8 +155,8 @@ class HowStuffWorks(Scraper):
         """
         for idx, page in enumerate(article['content']):
             if 'image_orig' in page:
-                article['content'][idx]['image_save_path'], article['content'][idx]['image_rel'] = self.download_image(article, page['image_orig'])
-
+                article['content'][idx]['image_save_path'] = self.download_image(article, page['image_orig'])
+                article['content'][idx]['image_rel'] = "assets/" + page['image_orig'].split('/')[-1]
         return article
 
     def download_image(self, article, image_url):
@@ -167,9 +167,8 @@ class HowStuffWorks(Scraper):
                                        "assets",
                                        image_url.split('/')[-1]
                                        )
-        image_rel_path = "assets/" + image_url.split('/')[-1]
         self.download(image_url, image_save_path, self._url_header)
-        return image_save_path, image_rel_path
+        return image_save_path
 
     def process_content_links(self, article):
         """
@@ -188,8 +187,11 @@ class HowStuffWorks(Scraper):
                     base_img_url = "http://s.hswstatic.com/"
 
                     img_dl_link = image['src']
-                    if not image['src'].startswith(base_img_url):
+                    if image['src'].startswith("http"):
+                        img_dl_link
+                    elif not image['src'].startswith(base_img_url):
                         img_dl_link = base_img_url + image['src']
+
                     self.cprint("Saving Image: " + image['src'], log=True)
                     abs_src = self.download_image(article, img_dl_link)
                     # Replace the src of downloaded image
@@ -202,50 +204,50 @@ class HowStuffWorks(Scraper):
                                 'no-background': '',
                                 'disable-javascript': ''
                                 }
-
-            links = page_soup.find_all("a")
+            # Should remove duplicate links so we do not have to process the same thing twice
+            links = set(page_soup.find_all("a"))
             if len(links) > 0:
-                # Should remove duplicate links so we do not have to process the same thing twice
-                links = set(links)
                 for idx, link in enumerate(links):
-                    if 'href' not in link:
-                        continue
 
                     if re.match('.*howstuffworks\.com.*', link['href']):
                         try:
                             rel_path, full_path = self.get_save_path(link['href'])
                         except CrumbsError as e:
-                            self.log("external link CrumbError: " + str(e) + " in url " + link['href'], level='warning')
+                            self.log("external link CrumbError: " + str(e) + " in url " + link['href'], level='error')
                             continue
-                        new_link = rel_path
+                        new_link = "/" + rel_path
                     else:
                         link_name = link.get_text().replace(' ', '_')
-                        pdf_path = os.path.join(article['rel_path'], "assets", "link-" + str(idx) + ".pdf")
-                        new_link = pdf_path
+                        pdf_rel_path = "assets/link-" + str(idx) + ".pdf"
+                        pdf_save_path = os.path.join(article['rel_path'], pdf_rel_path)
+                        new_link = pdf_rel_path
 
                         # Create pdf of external page
-                        pdf_file = self._base_dir + pdf_path
+                        pdf_file = os.path.join(self._base_dir, pdf_save_path)
                         if not os.path.isfile(pdf_file):
                             if link['href'].endswith('pdf'):
-                                self.cprint("Downloading pdf: " + pdf_path, log=True)
+                                self.cprint("Downloading pdf: " + pdf_save_path, log=True)
                                 # If it is linking to a pdf, then just download it
                                 if not self.download(link['href'], pdf_file, self._url_header):
-                                    self.log("pdf download failed: " + link_name , level='warning')
+                                    self.log("pdf download failed: " + link_name , level='error')
+                                    continue
                             else:
-                                self.cprint("Creating pdf: " + pdf_path, log=True)
+                                self.cprint("Creating pdf: " + pdf_save_path, log=True)
                                 try:
                                     pdfkit.from_url(link['href'], pdf_file, options=pdfkit_options)
                                 except IOError as e:
-                                    self.log("pdfkit IOError: [" + link_name + "] " + str(e), level='warning')
+                                    self.log("pdfkit IOError: [" + link_name + "] " + str(e), level='error')
                                     continue
                                 except Exception as e:
-                                    self.log("pdfkit Exception: [" + link_name + "] " + str(e), level='warning')
+                                    self.log("pdfkit Exception: [" + link_name + "] " + str(e), level='error')
                                     continue
 
                     # Convert to web safe path
-                    rel_path = urllib.request.pathname2url(new_link)
+                    local_link = urllib.request.pathname2url(new_link)
+
+                    new_tag = link['href'] + '" class="original-link">Original</a> <a class="local-link" href="' + local_link
                     # Replace link with link to article or a pdf
-                    article['content'][idx_page]['page_content'] = article['content'][idx_page]['page_content'].replace(link['href'], new_link)
+                    article['content'][idx_page]['page_content'] = article['content'][idx_page]['page_content'].replace(link['href'], new_tag)
 
         return article
 
