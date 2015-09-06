@@ -9,7 +9,7 @@ Developed using Python 3.4
 - requests  
 
 ## System Dependencies
-- wkhtmltopdf ([downloads](http://wkhtmltopdf.org/downloads.html))
+- wkhtmltopdf ([Install](https://github.com/JazzCore/python-pdfkit/wiki/Installing-wkhtmltopdf))
 
 ## Usage
 - **Config:** Rename config.ini.sample to config.ini and edit to your needs
