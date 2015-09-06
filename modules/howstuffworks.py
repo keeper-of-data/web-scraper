@@ -7,6 +7,7 @@ import re
 import json
 import math
 import pdfkit
+import traceback
 
 
 class HowStuffWorks(Scraper):
@@ -127,7 +128,7 @@ class HowStuffWorks(Scraper):
             self.html_template(whole_article)
 
             # Add article to completed list
-            self.add_completed(url, whole_article['abs_path'], whole_article['title'])
+            self.add_completed(url, whole_article['rel_path'], whole_article['title'])
 
         # Everything was successful
         return True
@@ -154,8 +155,7 @@ class HowStuffWorks(Scraper):
         """
         for idx, page in enumerate(article['content']):
             if 'image_orig' in page:
-                article['content'][idx]['image_abs'] = self.download_image(article, page['image_orig'])
-                article['content'][idx]['image_rel'] = "./assets/" + article['content'][idx]['image_abs'].split("/assets/")[-1]
+                article['content'][idx]['image_save_path'], article['content'][idx]['image_rel'] = self.download_image(article, page['image_orig'])
 
         return article
 
@@ -163,9 +163,13 @@ class HowStuffWorks(Scraper):
         """
         :return: absolute path for image
         """
-        abs_image_path = article['abs_path'] + "assets/" + image_url.split('/')[-1]
-        self.download(image_url, self._base_dir + abs_image_path, self._url_header)
-        return abs_image_path
+        image_save_path = os.path.join(self._base_dir, article['rel_path'],
+                                       "assets",
+                                       image_url.split('/')[-1]
+                                       )
+        image_rel_path = "assets/" + image_url.split('/')[-1]
+        self.download(image_url, image_save_path, self._url_header)
+        return image_save_path, image_rel_path
 
     def process_content_links(self, article):
         """
@@ -209,14 +213,14 @@ class HowStuffWorks(Scraper):
 
                     if re.match('.*howstuffworks\.com.*', link['href']):
                         try:
-                            abs_path, full_path = self.get_save_path(link['href'])
+                            rel_path, full_path = self.get_save_path(link['href'])
                         except CrumbsError as e:
                             self.log("external link CrumbError: " + str(e) + " in url " + link['href'], level='warning')
                             continue
-                        new_link = abs_path
+                        new_link = rel_path
                     else:
                         link_name = link.get_text().replace(' ', '_')
-                        pdf_path = os.path.join(article['abs_path'], "assets", "link-" + str(idx) + ".pdf")
+                        pdf_path = os.path.join(article['rel_path'], "assets", "link-" + str(idx) + ".pdf")
                         new_link = pdf_path
 
                         # Create pdf of external page
@@ -239,7 +243,7 @@ class HowStuffWorks(Scraper):
                                     continue
 
                     # Convert to web safe path
-                    abs_path = urllib.request.pathname2url(new_link)
+                    rel_path = urllib.request.pathname2url(new_link)
                     # Replace link with link to article or a pdf
                     article['content'][idx_page]['page_content'] = article['content'][idx_page]['page_content'].replace(link['href'], new_link)
 
@@ -255,21 +259,22 @@ class HowStuffWorks(Scraper):
         if crumbs is None:
             crumbs = self.get_crumbs(url)
 
-        abs_path = '/articles'
+        rel_path = 'articles'
         # Add crumbs to path
         for crumb in crumbs:
             crumb = self.sanitize(crumb.replace(' ', '_'))
-            abs_path = os.path.join(abs_path, crumb)
+            rel_path = os.path.join(rel_path, crumb)
 
         # Add article title to path
         title = url.split('/')[-1].split('.')[0]
-        abs_path = os.path.join(abs_path, title)
-        abs_path += '/'
-        abs_path = os.path.normcase(abs_path)
+        rel_path = os.path.join(rel_path, title)
+        rel_path += '/'
+        rel_path = os.path.normcase(rel_path)
+        rel_path = rel_path.replace("\\", "/")  # Replace windows '\\' with web safe '/'
         # Create full path
-        full_save_path = os.path.normpath(os.path.join(self._base_dir, '.' + abs_path)) + '/'
+        full_save_path = os.path.normpath(os.path.join(self._base_dir, rel_path)) + '/'
         full_save_path = os.path.normcase(full_save_path)
-        return (abs_path, full_save_path)
+        return (rel_path, full_save_path)
 
     def get_crumbs(self, url=None, soup=None):
         """
@@ -338,7 +343,7 @@ class HowStuffWorks(Scraper):
                 return False
 
             # Get save path
-            article['abs_path'], article['save_path'] = self.get_save_path(url, article['bread_crumbs'])
+            article['rel_path'], article['save_path'] = self.get_save_path(url, article['bread_crumbs'])
 
             # Get title & author
             header_soup = page_soup.find("div", {"id": "content-header"})
@@ -433,7 +438,7 @@ class HowStuffWorks(Scraper):
                 return False
 
             # Get save path
-            article['abs_path'], article['save_path'] = self.get_save_path(url, article['bread_crumbs'])
+            article['rel_path'], article['save_path'] = self.get_save_path(url, article['bread_crumbs'])
 
             # Get title & author
             header_soup = page_soup.find("div", {"id": "title"})
@@ -481,7 +486,7 @@ class HowStuffWorks(Scraper):
         for idx, page in enumerate(article['content']):
             html += '<div id="page-' + str(idx) + '">'
             html += '<div class="page-title">' + page['title'] + '</div>'
-            if 'image_abs' in page:
+            if 'image_save_path' in page:
                 html += '<div class="main-image">'
                 html += '<img src="' + page['image_rel'] + '" />'
                 html += '<div class="caption">' + page['image_caption'] + '</div>'
@@ -494,9 +499,10 @@ class HowStuffWorks(Scraper):
         html += '</body></html>'
 
         try:
-            with open(article['save_path'] + "index.html", 'w') as f:
+            with open(article['save_path'] + "index.html", 'w', encoding='utf8') as f:
                 f.write(html)
-        except UnicodeEncodeError:
-            self.log("UnicodeEncodeError: " + article['save_path'])
+        except UnicodeEncodeError as e:
+            self.log("UnicodeEncodeError: " + article['save_path'] +
+                     "\n" + str(e) + "\n" + str(traceback.format_exc()), level="error")
             with open(article['save_path'] + "index.html", 'w') as f:
                 f.write("<h1>Failed to create html file. ERROR: UnicodeEncodeError</h1>")
