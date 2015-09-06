@@ -1,5 +1,6 @@
 from utils.exceptions import *
 from utils.scraper import Scraper
+import os
 
 
 class Wallhaven(Scraper):
@@ -99,8 +100,12 @@ class Wallhaven(Scraper):
         #####
         file_ext = self.get_file_ext(img_src)
         file_name = "alphaWallhaven-" + prop['id']
-        prop['save_path'], prop['hash'] = self.create_hashed_path(self._base_dir, file_name)
-        prop['save_path'] += file_name + file_ext
+
+        wallpaper_base_dir = os.path.join(self._base_dir, "wallpapers")
+        prop['save_path'], prop['hash'] = self.create_hashed_path(wallpaper_base_dir, file_name)
+        prop['save_path'] = os.path.join(prop['save_path'], file_name + file_ext)
+        prop['rel_path'] = prop['save_path'].replace(self._base_dir, "")
+
         if self.download(img_src, prop['save_path'], self._url_header):
             self.save_props(prop)
 
