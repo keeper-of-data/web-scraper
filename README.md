@@ -1,5 +1,8 @@
 # Web Scraper tool
 
+# Depreciated, replaced by individual repos that start with `scrape-` over at https://github.com/xtream1101?tab=repositories
+
+
 Python web scraper to archive various sites  
 Developed using Python 3.4
 
